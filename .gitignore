@@ -27,3 +27,8 @@ Thumbs.db
 # vite
 *.local
 .vite/
+
+# firebase
+.firebase/
+firebase-debug.log
+.firebaserc

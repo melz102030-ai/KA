@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { watchSession, nafathSignIn, updateRole, signOutSession } from "./auth.js";
+import { useKids, useMessages } from "./data/store.js";
 
 // ─── Google Fonts ────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Mono:wght@400;700&display=swap');`;
@@ -2750,10 +2752,36 @@ export default function App() {
   const [toast,  setToast]  = useState(null);
   const [userRole, setUserRole] = useState("parent"); // parent | teacher | student
 
-  // ── Session persistence state ──
+  // ── Firebase session state ──
   const [checkingSession, setCheckingSession] = useState(true);
-  const [session,         setSession]         = useState(null); // {role, pin, faceId, savedAt}
+  const [user,            setUser]            = useState(null); // Firebase user
+  const [session,         setSession]         = useState(null); // Firestore profile {role, pin, faceId, savedAt}
   const [quickUnlocked,   setQuickUnlocked]   = useState(false);
+
+  // ── Live data from Firestore (seeded on first run) ──
+  const { rows: liveKids } = useKids();
+  const { rows: liveMsgs } = useMessages();
+
+  // Overlay Firestore kids onto local state, keeping the running vitals sim
+  useEffect(() => {
+    if (!liveKids.length) return;
+    setKids(prev => {
+      const sim = Object.fromEntries(prev.map(k => [k.id, k]));
+      return liveKids.map(k => sim[k.id]
+        ? { ...k, hr: sim[k.id].hr, temp: sim[k.id].temp, battery: sim[k.id].battery }
+        : k);
+    });
+  }, [liveKids]);
+
+  // Merge Firestore messages with locally-added (simulated) ones
+  useEffect(() => {
+    if (!liveMsgs.length) return;
+    setMsgs(prev => {
+      const liveIds = new Set(liveMsgs.map(m => String(m.id)));
+      const extras = prev.filter(m => !liveIds.has(String(m.id)));
+      return [...extras, ...liveMsgs];
+    });
+  }, [liveMsgs]);
 
   // Clock tick
   useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000); return()=>clearInterval(t); },[]);
@@ -2780,30 +2808,33 @@ export default function App() {
     return()=>clearTimeout(t);
   },[]);
 
-  // Check for an existing saved session (so the user doesn't have to redo Nafath every time)
+  // Watch the Firebase auth session (persisted across reloads by Firebase itself)
   useEffect(()=>{
-    let cancelled = false;
-    (async ()=>{
-      try {
-        const res = await window.storage.get('akbadna_session');
-        if (!cancelled && res && res.value) {
-          const data = JSON.parse(res.value);
-          setSession(data);
-        }
-      } catch (e) {
-        // no saved session — first time user, will need full Nafath login
-      } finally {
-        if (!cancelled) setCheckingSession(false);
+    const unsub = watchSession(({ user, profile }) => {
+      setUser(user);
+      setSession(profile);
+      if (user && profile) {
+        setUserRole(profile.role || "parent");
+        // no quick-unlock secret set → go straight in
+        if (!profile.pin && !profile.faceId) { setQuickUnlocked(true); setAuthed(true); }
+      } else {
+        setAuthed(false);
+        setQuickUnlocked(false);
       }
-    })();
-    return ()=>{ cancelled = true; };
+      setCheckingSession(false);
+    });
+    return unsub;
   },[]);
 
-  // Called after a fresh, full Nafath login succeeds
+  // Called after the Nafath flow succeeds — opens a real Firebase session
   const handleNafathSuccess = async (role, pin, faceId) => {
-    const data = { role, pin, faceId, savedAt: Date.now() };
-    try { await window.storage.set('akbadna_session', JSON.stringify(data)); } catch(e) {}
-    setSession(data);
+    try {
+      const profile = await nafathSignIn(role, pin, faceId);
+      setSession(profile);
+    } catch (e) {
+      // offline / rules blocked — keep a local-only session so the demo still runs
+      setSession({ role, pin, faceId, savedAt: Date.now() });
+    }
     setUserRole(role);
     setQuickUnlocked(true);
     setAuthed(true);
@@ -2811,21 +2842,29 @@ export default function App() {
 
   // Called after successful quick unlock (Face ID / PIN)
   const handleQuickUnlock = () => {
-    setUserRole(session.role);
+    setUserRole(session?.role || "parent");
     setQuickUnlocked(true);
     setAuthed(true);
   };
 
-  // Force a full Nafath re-login (forgets saved session)
-  const handleUseNafathInstead = async () => {
-    try { await window.storage.delete('akbadna_session'); } catch(e) {}
-    setSession(null);
+  // Switch role and persist it to the Firestore profile
+  const handleSetRole = (role) => {
+    setUserRole(role);
+    updateRole(role).catch(()=>{});
   };
 
-  // Full logout — clears saved session entirely
-  const handleLogout = async () => {
-    try { await window.storage.delete('akbadna_session'); } catch(e) {}
+  // Force a full Nafath re-login (ends the current Firebase session)
+  const handleUseNafathInstead = async () => {
+    try { await signOutSession(); } catch(e) {}
     setSession(null);
+    setUser(null);
+  };
+
+  // Full logout — ends the Firebase session
+  const handleLogout = async () => {
+    try { await signOutSession(); } catch(e) {}
+    setSession(null);
+    setUser(null);
     setQuickUnlocked(false);
     setAuthed(false);
   };
@@ -2843,7 +2882,7 @@ export default function App() {
 
   // ── Not authed yet: decide between quick-unlock (saved session) or full Nafath ──
   if (!authed) {
-    if (session && !quickUnlocked) {
+    if (session && (session.pin || session.faceId) && !quickUnlocked) {
       return <QuickUnlock session={session} onUnlock={handleQuickUnlock} onUseNafath={handleUseNafathInstead}/>;
     }
     return <NafathLogin onSuccess={handleNafathSuccess}/>;
@@ -2897,7 +2936,7 @@ export default function App() {
         {active==="attendance" && <AttendancePage userRole={userRole} toast={setToast}/>}
         {active==="carpool"    && <CarpoolPage/>}
         {active==="messages"   && <MessagesPage msgs={msgs} setMsgs={setMsgs}/>}
-        {active==="more"       && <MorePage setActive={setActive} userRole={userRole} setUserRole={setUserRole} session={session} handleLogout={handleLogout}/>}
+        {active==="more"       && <MorePage setActive={setActive} userRole={userRole} setUserRole={handleSetRole} session={session} handleLogout={handleLogout}/>}
         {active==="akbid"      && <AkbIdPage kids={kids} setActive={setActive} setToast={setToast}/>}
         {active==="schedule"   && <SchedulePage now={now}/>}
         {active==="health"     && <HealthPage kids={kids} setActive={setActive}/>}
