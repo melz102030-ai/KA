@@ -3,19 +3,32 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "أكبادنا — منصة تعليم ذكية لمتابعة الأبناء عبر الساعة الذكية",
+  "description": "أكبادنا — منصة تعليم ذكية لمتابعة الأبناء عبر الساعة الذكية (Wonlex KT37)",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "firebase": "^12.18.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "web": "npm run dev -w @akbadna/web",
+    "mobile": "npm run start -w @akbadna/mobile",
+    "functions:build": "npm run build -w @akbadna/functions",
+    "core:build": "npm run build -w @akbadna/core",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "tsc -b"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.7"
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

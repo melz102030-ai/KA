@@ -4,11 +4,32 @@ node_modules/
 # build output
 dist/
 dist-ssr/
+build/
+*.tsbuildinfo
+
+# expo / react native
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebaserc
+.runtimeconfig.json
 
 # local env
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # logs
 npm-debug.log*
@@ -17,6 +38,9 @@ yarn-error.log*
 pnpm-debug.log*
 *.log
 
+# test / coverage
+coverage/
+
 # editor / OS
 .vscode/*
 !.vscode/extensions.json
@@ -24,11 +48,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# vite
+# misc
 *.local
 .vite/
-
-# firebase
-.firebase/
-firebase-debug.log
-.firebaserc
