@@ -1,0 +1,13 @@
+/* Minimal pre-mount reset. The full app styling lives in GLOBAL_CSS inside App.jsx. */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #070711;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
