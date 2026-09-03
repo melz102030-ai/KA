@@ -1,127 +1,150 @@
 rules_version = '2';
 
-// Akbadna Firestore rules.
-// Cloud Functions use the Admin SDK and bypass these — so all privileged writes
-// (telemetry ingest, live snapshots, alerts, attendance counts) go through
-// @akbadna/functions and the client is kept read-mostly here.
+/*
+ * Akbadna Firestore rules — free-plan model.
+ *
+ * The app writes directly from the client (no Cloud Functions required), so
+ * these rules carry the authorization logic. When the deployed Functions are
+ * enabled (EXPO_PUBLIC_USE_FUNCTIONS=1) they use the Admin SDK and bypass rules;
+ * the client paths below still hold for everyone else.
+ */
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function has(list, v) { return v in list; }
+    function changed(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
+
+    function kidData(kidId) { return get(/databases/$(database)/documents/kids/$(kidId)).data; }
     function guardianOf(kidId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/kids/$(kidId)).data.guardianUids;
+      return signedIn() && request.auth.uid in kidData(kidId).guardianUids;
     }
-    // A paired KT37 authenticates with a custom token carrying { role:"device", watchId }.
+    function classData(schoolId, classId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/classes/$(classId)).data;
+    }
+    function teacherOfClass(schoolId, classId) {
+      return signedIn() && request.auth.uid in classData(schoolId, classId).teacherIds;
+    }
+    // A paired KT37 authenticates with a custom token { role:"device", watchId }.
     function isDevice(watchId) {
       return signedIn() && request.auth.token.role == 'device' && request.auth.token.watchId == watchId;
     }
 
-    // ── Profiles ──────────────────────────────────────────────
+    /* ── Profiles ──────────────────────────────────────────── */
     match /users/{uid} {
       allow read: if isSelf(uid);
       allow create, update: if isSelf(uid);
       allow delete: if false;
     }
 
+    // Members create only their OWN membership rows.
     match /memberships/{id} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
-      allow write: if false; // issued by functions / school admin flow
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Join codes: readable by any signed-in user (to join); mutated only by functions.
+    /* ── Onboarding join codes ─────────────────────────────── */
     match /joinCodes/{code} {
       allow read: if signedIn();
-      allow write: if false;
+      allow create: if signedIn() && request.resource.data.createdByUid == request.auth.uid;
+      allow update: if signedIn() && changed(['uses', 'updatedAt']); // usage counter only
+      allow delete: if signedIn() && resource.data.createdByUid == request.auth.uid;
     }
 
-    // ── Org ──────────────────────────────────────────────────
+    /* ── Org ──────────────────────────────────────────────── */
     match /schools/{schoolId} {
       allow read: if signedIn();
-      allow write: if false;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.adminUids;
+      allow update: if signedIn() && request.auth.uid in resource.data.adminUids;
+      allow delete: if false;
 
       match /classes/{classId} {
         allow read: if signedIn();
-        allow write: if false;
+        allow create: if signedIn() && request.auth.uid in request.resource.data.teacherIds;
+        // teachers/admins edit freely; anyone signed-in may only extend the roster
+        allow update: if teacherOfClass(schoolId, classId)
+          || (request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.adminUids)
+          || changed(['studentIds', 'updatedAt']);
+        allow delete: if false;
       }
+
       match /attendanceSessions/{sessionId} {
         allow read: if signedIn();
-        allow write: if false; // submitAttendance callable only
+        allow write: if signedIn()
+          && teacherOfClass(schoolId, request.resource.data.classId != null
+              ? request.resource.data.classId : resource.data.classId);
+
         match /records/{kidId} {
           allow read: if signedIn();
-          allow write: if false;
+          allow write: if signedIn()
+            && teacherOfClass(schoolId, request.resource.data.classId);
         }
       }
     }
 
-    // ── Kids ─────────────────────────────────────────────────
+    /* ── Kids ─────────────────────────────────────────────── */
     match /kids/{kidId} {
-      allow read: if guardianOf(kidId) || signedIn(); // TODO tighten to class teachers
+      allow read: if signedIn();
       allow create: if signedIn() && request.auth.uid in request.resource.data.guardianUids;
-      // guardians may edit profile fields but never the function-owned live snapshot
-      allow update: if guardianOf(kidId)
-        && request.resource.data.live == resource.data.live;
+      // guardians edit profile fields but never the function/device-owned live block
+      allow update: if guardianOf(kidId) && request.resource.data.live == resource.data.live;
       allow delete: if false;
 
       match /attendanceSummary/{doc} {
-        allow read: if guardianOf(kidId) || signedIn();
+        allow read: if signedIn();
         allow write: if false;
       }
     }
 
-    // ── Watches & telemetry ──────────────────────────────────
+    /* ── Watches & telemetry ──────────────────────────────── */
     match /watches/{watchId} {
       allow read: if signedIn();
-      // the paired device may only touch lastSeen/battery/link; pairing + settings
-      // go through callables (Admin SDK)
       allow update: if isDevice(watchId)
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['lastSeenAt', 'batteryPct', 'link', 'lastLocation', 'updatedAt']);
+        && changed(['lastSeenAt', 'batteryPct', 'link', 'lastLocation', 'updatedAt']);
       allow create, delete: if false;
 
       match /commands/{cmdId} {
         allow read: if isDevice(watchId);
-        allow update: if isDevice(watchId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'ackedAt']);
-        allow create, delete: if false; // queued by sendWatchCommand
+        allow update: if isDevice(watchId) && changed(['status', 'ackedAt']);
+        allow create, delete: if false;
       }
     }
     match /telemetry/{watchId}/packets/{packetId} {
       allow create: if isDevice(watchId);
-      allow read, update, delete: if false; // read via kid.live + rollups
+      allow read, update, delete: if false;
     }
     match /telemetry/{watchId}/{document=**} {
       allow read, write: if false;
     }
 
-    // ── Attendance rewards ───────────────────────────────────
     match /rewards/{id} {
       allow read: if signedIn();
       allow write: if false;
     }
 
-    // ── Messaging ────────────────────────────────────────────
+    /* ── Messaging ────────────────────────────────────────── */
     match /threads/{threadId} {
       allow read: if signedIn() && request.auth.uid in resource.data.participantUids;
       allow create: if signedIn() && request.auth.uid in request.resource.data.participantUids;
       allow update: if signedIn() && request.auth.uid in resource.data.participantUids;
 
       match /messages/{messageId} {
-        allow read: if signedIn()
-          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantUids;
+        function thread() { return get(/databases/$(database)/documents/threads/$(threadId)).data; }
+        allow read: if signedIn() && request.auth.uid in thread().participantUids;
         allow create: if signedIn()
           && request.resource.data.senderUid == request.auth.uid
-          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantUids;
+          && request.auth.uid in thread().participantUids;
         allow update, delete: if false;
       }
     }
 
-    // ── Carpool ──────────────────────────────────────────────
+    /* ── Carpool ──────────────────────────────────────────── */
     match /carpoolTrips/{tripId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.driverUid == request.auth.uid;
@@ -136,39 +159,41 @@ service cloud.firestore {
       }
     }
 
-    // ── Wallet ───────────────────────────────────────────────
+    /* ── Wallet ───────────────────────────────────────────── */
     match /walletAccounts/{kidId} {
       allow read: if guardianOf(kidId);
-      allow write: if false; // ledger writes via functions
+      allow create, update: if guardianOf(kidId)
+        && request.resource.data.ownerUid == request.auth.uid;
       match /transactions/{txId} {
         allow read: if guardianOf(kidId);
-        allow write: if false;
+        allow create: if guardianOf(kidId);
+        allow update, delete: if false;
       }
     }
 
-    // ── Safety ───────────────────────────────────────────────
+    /* ── Safety ───────────────────────────────────────────── */
     match /geofences/{id} {
       allow read: if signedIn();
-      allow create, update: if signedIn()
-        && resource == null || resource.data.scope.kind == 'kid' && guardianOf(resource.data.scope.id);
-      allow delete: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.scope.kind == 'kid' && guardianOf(request.resource.data.scope.id);
+      allow update, delete: if signedIn()
+        && resource.data.scope.kind == 'kid' && guardianOf(resource.data.scope.id);
     }
     match /alerts/{id} {
       allow read: if signedIn();
-      // acknowledge / resolve only — never create from the client
+      // a guardian may raise an SOS for their own kid; other alerts are function-made
+      allow create: if signedIn()
+        && request.resource.data.kind == 'sos'
+        && guardianOf(request.resource.data.kidId);
+      // acknowledge / resolve
       allow update: if signedIn()
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['state', 'acknowledgedBy', 'acknowledgedAt', 'resolvedAt', 'updatedAt']);
-      allow create, delete: if false;
+        && changed(['state', 'acknowledgedBy', 'acknowledgedAt', 'resolvedAt', 'updatedAt']);
+      allow delete: if false;
     }
     match /contacts/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if signedIn();
+      allow read, create, update, delete: if signedIn();
     }
 
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

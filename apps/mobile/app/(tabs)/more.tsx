@@ -13,7 +13,7 @@ import {
   SectionHeader,
 } from "@/components";
 import { useAuth } from "@/lib/auth";
-import { call } from "@/lib/functions";
+import { seedDemoSchool } from "@/data/mutations";
 import { useMemberships, useSchoolJoinCode } from "@/data/hooks";
 import { space } from "@/theme";
 
@@ -87,10 +87,10 @@ export default function More() {
   const seed = async () => {
     setSeeding(true);
     try {
-      const res = await call("seedDemoSchool", {});
+      const res = await seedDemoSchool();
       Alert.alert("تم", `أُنشئت مدرسة وفصل و${res.kidIds.length} طلاب مرتبطين بحسابك.`);
-    } catch {
-      Alert.alert("تعذّر", "تأكد من نشر الدوال وتفعيل Firestore.");
+    } catch (e) {
+      Alert.alert("تعذّر", e instanceof Error ? e.message : "تأكد من تفعيل Firestore.");
     } finally {
       setSeeding(false);
     }

@@ -45,14 +45,19 @@ npm run lint
 npm run typecheck
 ```
 
-## Firebase
+## Firebase — يعمل بالكامل على الخطة المجانية (Spark)
 
-المشروع: `kasa-dcabd`. مطلوب في وحدة التحكم قبل التشغيل الكامل:
+المشروع: `kasa-dcabd`. لا حاجة لخطة Blaze. كل الكتابات تتم من العميل مباشرةً
+على Firestore محميّةً بـ `firestore.rules`.
 
-1. **Authentication** → فعّل مزوّد **Anonymous** (ولاحقًا Phone).
+1. **Authentication** → فعّل **Anonymous** (و **Phone** لدخول OTP).
 2. **Firestore Database** → أنشئ القاعدة.
-3. رقّ المشروع إلى خطة **Blaze** (لازمة لـ Functions).
-4. `firebase deploy --only firestore:rules,firestore:indexes,functions`
+3. `firebase deploy --only firestore:rules,firestore:indexes,hosting`
+
+**Cloud Functions اختيارية** (تتطلب Blaze): مكتوبة كاملة في `services/functions`
+كمسار ترقية — عند تفعيلها ضع `EXPO_PUBLIC_USE_FUNCTIONS=1` فتتحوّل نفس العمليات
+لتمرّ عبر الدوال المنشورة دون تغيير أي شاشة. تضيف: تحقق من جهة الخادم، اقتران
+KT37 (توكن جهاز)، خط أنابيب telemetry، إشعارات push، المهام المجدولة.
 
 ## خارطة الطريق
 

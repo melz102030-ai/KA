@@ -5,6 +5,7 @@ import { AppText, Badge, Button, Card, Field, RowGroup, Screen } from "@/compone
 import { useAuth } from "@/lib/auth";
 import { useKids } from "@/data/hooks";
 import { call } from "@/lib/functions";
+import { USE_FUNCTIONS } from "@/lib/config";
 import { color, font, space } from "@/theme";
 
 type Pending = { watchId: string; code: string; expiresAt: number };
@@ -37,15 +38,16 @@ export default function PairWatch() {
     }
     setBusy(true);
     try {
-      if (isDemo) {
+      if (USE_FUNCTIONS && !isDemo) {
+        const res = await call("startWatchPairing", { kidId, imei });
+        setPending({ watchId: res.watchId, code: res.pairingCode, expiresAt: res.expiresAt });
+      } else {
+        // free plan / demo: preview the code; binding happens once Functions are on
         setPending({
-          watchId: "demo-watch",
+          watchId: "local",
           code: String(Math.floor(100000 + Math.random() * 900000)),
           expiresAt: Date.now() + 10 * 60_000,
         });
-      } else {
-        const res = await call("startWatchPairing", { kidId, imei });
-        setPending({ watchId: res.watchId, code: res.pairingCode, expiresAt: res.expiresAt });
       }
     } catch {
       setError("تعذّر بدء الاقتران — تأكد من نشر الدوال والاتصال.");
@@ -133,9 +135,9 @@ export default function PairWatch() {
         onPress={start}
         style={{ marginTop: space.lg }}
       />
-      {isDemo && (
+      {(isDemo || !USE_FUNCTIONS) && (
         <AppText variant="caption" style={{ textAlign: "center", marginTop: space.sm }}>
-          وضع تجريبي — سيُنشأ رمز وهمي
+          يُنشأ رمز للمعاينة — الربط الفعلي بالساعة يُفعَّل مع الدوال عند وصول العتاد
         </AppText>
       )}
     </Screen>

@@ -15,7 +15,7 @@ import {
 } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { useClass, useKids, useSchedule } from "@/data/hooks";
-import { call } from "@/lib/functions";
+import { raiseKidSos } from "@/data/mutations";
 import {
   currentPeriod,
   fmtDate,
@@ -62,19 +62,16 @@ export default function Home() {
   const locate = (k: Kid) =>
     Alert.alert("الموقع", k.live.location ? "عرض آخر موقع معروف." : "لا يوجد موقع محدّث بعد.");
   const sos = async (k: Kid) => {
-    if (!k.watchId || !k.live.location) {
-      Alert.alert("استغاثة", "لا توجد ساعة مرتبطة بموقع حالي.");
-      return;
-    }
+    const loc = k.live.location ?? { lat: 24.7136, lng: 46.6753 };
     try {
-      await call("raiseSos", {
-        watchId: k.watchId,
-        lat: k.live.location.lat,
-        lng: k.live.location.lng,
-      });
-      Alert.alert("استغاثة", "تم رفع التنبيه وإشعار الجهات.");
-    } catch {
-      Alert.alert("استغاثة", "تعذّر الاتصال بالخادم.");
+      if (isDemo) {
+        Alert.alert("استغاثة", "وضع تجريبي — لم يُرفع تنبيه.");
+        return;
+      }
+      await raiseKidSos(k.id, loc);
+      Alert.alert("استغاثة", "تم رفع تنبيه الاستغاثة.");
+    } catch (e) {
+      Alert.alert("استغاثة", e instanceof Error ? e.message : "تعذّر الرفع.");
     }
   };
 
