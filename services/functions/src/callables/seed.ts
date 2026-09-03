@@ -45,8 +45,8 @@ export const seedDemoSchool = defineCallable("seedDemoSchool", async (_input, { 
   );
 
   const kids = [
-    { id: kidIds[0]!, name: "أحمد محمد الغامدي", photoEmoji: "👦", gradeLabel: "أول متوسط - أ" },
-    { id: kidIds[1]!, name: "منى محمد الغامدي", photoEmoji: "👧", gradeLabel: "ثاني ابتدائي - ب" },
+    { id: kidIds[0]!, name: "أحمد محمد الغامدي", gradeLabel: "أول متوسط - أ" },
+    { id: kidIds[1]!, name: "منى محمد الغامدي", gradeLabel: "ثاني ابتدائي - ب" },
   ];
   for (const k of kids) {
     batch.set(
@@ -54,7 +54,6 @@ export const seedDemoSchool = defineCallable("seedDemoSchool", async (_input, { 
       {
         id: k.id,
         name: k.name,
-        photoEmoji: k.photoEmoji,
         gradeLabel: k.gradeLabel,
         schoolId,
         classId,

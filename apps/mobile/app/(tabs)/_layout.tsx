@@ -1,12 +1,15 @@
-import { Text } from "react-native";
+import type { ColorValue } from "react-native";
 import { Redirect, Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { color, font } from "@/theme";
 
-const icon =
-  (emoji: string) =>
-  ({ focused }: { focused: boolean }) => (
-    <Text style={{ fontSize: focused ? 22 : 18, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+const tab =
+  (active: IoniconName, inactive: IoniconName) =>
+  ({ focused, color: c }: { focused: boolean; color: ColorValue }) => (
+    <Ionicons name={focused ? active : inactive} size={23} color={c} />
   );
 
 export default function TabsLayout() {
@@ -20,21 +23,37 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: color.bg },
         tabBarStyle: {
-          backgroundColor: "#0A0A16",
+          backgroundColor: color.surface,
           borderTopColor: color.border,
-          height: 64,
+          height: 62,
           paddingTop: 6,
+          paddingBottom: 8,
         },
-        tabBarActiveTintColor: color.teal,
-        tabBarInactiveTintColor: color.textMuted,
-        tabBarLabelStyle: { fontFamily: font.family.sansBold, fontSize: 10 },
+        tabBarActiveTintColor: color.primary,
+        tabBarInactiveTintColor: color.textDim,
+        tabBarLabelStyle: { fontFamily: font.family.medium, fontSize: 11 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "الرئيسية", tabBarIcon: icon("🏠") }} />
-      <Tabs.Screen name="attendance" options={{ title: "الحضور", tabBarIcon: icon("📋") }} />
-      <Tabs.Screen name="carpool" options={{ title: "كاربول", tabBarIcon: icon("🚗") }} />
-      <Tabs.Screen name="messages" options={{ title: "رسائل", tabBarIcon: icon("💬") }} />
-      <Tabs.Screen name="more" options={{ title: "المزيد", tabBarIcon: icon("⋯") }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: "الرئيسية", tabBarIcon: tab("home", "home-outline") }}
+      />
+      <Tabs.Screen
+        name="attendance"
+        options={{ title: "الحضور", tabBarIcon: tab("checkbox", "checkbox-outline") }}
+      />
+      <Tabs.Screen
+        name="carpool"
+        options={{ title: "التوصيل", tabBarIcon: tab("car", "car-outline") }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{ title: "الرسائل", tabBarIcon: tab("chatbubbles", "chatbubbles-outline") }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{ title: "المزيد", tabBarIcon: tab("ellipsis-horizontal", "ellipsis-horizontal") }}
+      />
     </Tabs>
   );
 }

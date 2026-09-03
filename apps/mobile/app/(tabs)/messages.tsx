@@ -1,32 +1,40 @@
 import { useState } from "react";
 import { ScrollView, TextInput, View } from "react-native";
-import { AppText, Button, Card, Dot, Screen } from "@/components";
+import { AppText, Button, Card, Dot, Icon, type IconName, Screen } from "@/components";
 import { DEMO_MESSAGES } from "@/data/demo";
-import { color, font, radius, space } from "@/theme";
+import { alpha, color, font, radius, space } from "@/theme";
 
-const CHANNEL: Record<string, { icon: string; tint: string; label: string }> = {
-  school: { icon: "🏫", tint: color.blue, label: "المدرسة" },
-  teacher: { icon: "👨‍🏫", tint: color.purple, label: "معلم" },
-  carpool: { icon: "🚗", tint: color.green, label: "كاربول" },
-  alert: { icon: "⚠️", tint: color.red, label: "تنبيه" },
-  system: { icon: "🔔", tint: color.teal, label: "النظام" },
-  direct: { icon: "💬", tint: color.teal, label: "محادثة" },
+type Tone = "info" | "primary" | "success" | "danger" | "neutral";
+const CHANNEL: Record<string, { icon: IconName; tone: Tone; label: string }> = {
+  school: { icon: "business-outline", tone: "info", label: "المدرسة" },
+  teacher: { icon: "school-outline", tone: "primary", label: "معلم" },
+  carpool: { icon: "car-outline", tone: "success", label: "التوصيل" },
+  alert: { icon: "alert-circle-outline", tone: "danger", label: "تنبيه" },
+  system: { icon: "notifications-outline", tone: "neutral", label: "النظام" },
+  direct: { icon: "chatbubble-outline", tone: "primary", label: "محادثة" },
+};
+const TONE_FG: Record<Tone, string> = {
+  info: color.info,
+  primary: color.primary,
+  success: color.success,
+  danger: color.danger,
+  neutral: color.textMuted,
 };
 
 const timeAgo = (ms: number) => {
-  const mins = Math.round((Date.now() - ms) / 60000);
-  if (mins < 60) return `قبل ${mins} د`;
-  const h = Math.round(mins / 60);
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 60) return `قبل ${m} د`;
+  const h = Math.round(m / 60);
   return h < 24 ? `قبل ${h} س` : "أمس";
 };
 
 type Bubble = { from: "me" | "them"; text: string };
+const seed = (m: { text: string }): Bubble[] => [{ from: "them", text: m.text }];
 
 export default function Messages() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [threads, setThreads] = useState<Record<string, Bubble[]>>({});
   const [draft, setDraft] = useState("");
-
   const open = DEMO_MESSAGES.find((m) => m.id === openId) ?? null;
 
   const send = () => {
@@ -39,7 +47,7 @@ export default function Messages() {
         open.channel === "school"
           ? "شكرًا، سنكون بإذن الله."
           : open.channel === "carpool"
-            ? "ممتاز، في انتظارك!"
+            ? "تمام، في انتظارك."
             : "بارك الله فيك.";
       setThreads((p) => ({
         ...p,
@@ -53,28 +61,19 @@ export default function Messages() {
     const bubbles = threads[open.id] ?? seed(open);
     return (
       <Screen scroll={false}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: space.sm,
-            paddingVertical: space.md,
-            borderBottomWidth: 1,
-            borderBottomColor: color.border,
-          }}
-        >
+        <View style={styles_threadHeader}>
           <Button
-            label="→"
+            label="رجوع"
             variant="ghost"
-            accent={color.teal}
             size="sm"
+            icon="chevron-forward"
             onPress={() => setOpenId(null)}
           />
-          <AppText style={{ fontSize: 20 }}>{ch.icon}</AppText>
-          <View>
-            <AppText variant="heading">{open.senderName}</AppText>
-            <AppText variant="label">{ch.label}</AppText>
+          <View style={{ flex: 1 }}>
+            <AppText variant="subtitle">{open.senderName}</AppText>
+            <AppText variant="caption">{ch.label}</AppText>
           </View>
+          <Icon name={ch.icon} size={20} color={TONE_FG[ch.tone]} />
         </View>
 
         <ScrollView
@@ -85,47 +84,32 @@ export default function Messages() {
             <View key={i} style={{ alignItems: b.from === "me" ? "flex-start" : "flex-end" }}>
               <View
                 style={{
-                  maxWidth: "80%",
+                  maxWidth: "82%",
                   padding: space.md,
                   borderRadius: radius.lg,
-                  backgroundColor: b.from === "me" ? `${color.teal}22` : color.surfaceStrong,
-                  borderWidth: 1,
-                  borderColor: b.from === "me" ? `${color.teal}44` : color.border,
+                  backgroundColor: b.from === "me" ? color.primary : color.surface,
+                  borderWidth: b.from === "me" ? 0 : 1,
+                  borderColor: color.border,
                 }}
               >
-                <AppText variant="body">{b.text}</AppText>
+                <AppText variant="body" color={b.from === "me" ? color.onPrimary : color.text}>
+                  {b.text}
+                </AppText>
               </View>
             </View>
           ))}
         </ScrollView>
 
-        <View
-          style={{
-            flexDirection: "row",
-            gap: space.sm,
-            paddingVertical: space.md,
-            borderTopWidth: 1,
-            borderTopColor: color.border,
-          }}
-        >
+        <View style={styles_composer}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={send}
-            placeholder="اكتب ردك…"
+            placeholder="اكتب رسالة…"
             placeholderTextColor={color.textDim}
-            style={{
-              flex: 1,
-              backgroundColor: color.surfaceStrong,
-              borderColor: color.border,
-              borderWidth: 1,
-              borderRadius: radius.md,
-              paddingHorizontal: space.md,
-              color: color.text,
-              fontFamily: font.family.sans,
-            }}
+            style={styles_input}
           />
-          <Button label="إرسال" accent={color.teal} onPress={send} />
+          <Button label="إرسال" size="sm" icon="send" onPress={send} />
         </View>
       </Screen>
     );
@@ -133,42 +117,30 @@ export default function Messages() {
 
   return (
     <Screen>
-      <AppText variant="title" style={{ paddingVertical: space.lg }}>
-        💬 الرسائل
+      <AppText variant="title" style={{ paddingVertical: space.md }}>
+        الرسائل
       </AppText>
       <View style={{ gap: space.sm }}>
         {DEMO_MESSAGES.map((m) => {
           const ch = CHANNEL[m.channel] ?? CHANNEL.direct!;
+          const fg = TONE_FG[ch.tone];
           return (
-            <Card
-              key={m.id}
-              onPress={() => setOpenId(m.id)}
-              style={{ flexDirection: "row", alignItems: "center", gap: space.md }}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: radius.md,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: `${ch.tint}22`,
-                }}
-              >
-                <AppText style={{ fontSize: 22 }}>{ch.icon}</AppText>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <AppText variant="heading">{m.senderName}</AppText>
-                  <AppText style={{ color: color.textDim, fontSize: font.size.xs }}>
-                    {timeAgo(m.at)}
+            <Card key={m.id} onPress={() => setOpenId(m.id)} padding={space.md}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                <View style={[styles_chip, { backgroundColor: alpha(fg, 0.1) }]}>
+                  <Icon name={ch.icon} size={18} color={fg} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <AppText variant="subtitle">{m.senderName}</AppText>
+                    <AppText variant="caption">{timeAgo(m.at)}</AppText>
+                  </View>
+                  <AppText variant="label" numberOfLines={1}>
+                    {m.text}
                   </AppText>
                 </View>
-                <AppText variant="label" numberOfLines={1}>
-                  {m.text}
-                </AppText>
+                {m.system ? <Dot tone="danger" /> : null}
               </View>
-              {m.system ? <Dot color={ch.tint} /> : null}
             </Card>
           );
         })}
@@ -177,4 +149,36 @@ export default function Messages() {
   );
 }
 
-const seed = (m: { text: string }): Bubble[] => [{ from: "them", text: m.text }];
+const styles_threadHeader = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  gap: space.sm,
+  paddingVertical: space.sm,
+  borderBottomWidth: 1,
+  borderBottomColor: color.border,
+};
+const styles_composer = {
+  flexDirection: "row" as const,
+  gap: space.sm,
+  paddingVertical: space.md,
+  borderTopWidth: 1,
+  borderTopColor: color.border,
+};
+const styles_input = {
+  flex: 1,
+  backgroundColor: color.surface,
+  borderColor: color.borderStrong,
+  borderWidth: 1,
+  borderRadius: radius.md,
+  paddingHorizontal: space.md,
+  color: color.text,
+  fontFamily: font.family.regular,
+  fontSize: font.size.md,
+};
+const styles_chip = {
+  width: 40,
+  height: 40,
+  borderRadius: radius.md,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+};

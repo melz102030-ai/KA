@@ -2,74 +2,75 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import { router, type Href } from "expo-router";
 import type { Role } from "@akbadna/core";
-import { AppText, Button, Card, Screen, SectionTitle } from "@/components";
+import {
+  AppText,
+  Button,
+  Card,
+  type IconName,
+  ListRow,
+  RowGroup,
+  Screen,
+  SectionHeader,
+} from "@/components";
 import { useAuth } from "@/lib/auth";
 import { call } from "@/lib/functions";
-import { alpha, color, radius, space } from "@/theme";
+import { space } from "@/theme";
 
-const ROLES: { id: Role; label: string; emoji: string }[] = [
-  { id: "parent", label: "ولي أمر", emoji: "👨" },
-  { id: "teacher", label: "معلم", emoji: "👨‍🏫" },
-  { id: "student", label: "طالب", emoji: "👦" },
+const ROLES: { id: Role; label: string }[] = [
+  { id: "parent", label: "ولي أمر" },
+  { id: "teacher", label: "معلم" },
+  { id: "student", label: "طالب" },
 ];
 
-type Tool = { icon: string; label: string; sub: string; tint: string; href?: Href };
+type Tool = { icon: IconName; label: string; sub: string; href?: Href };
 
 const TOOLS: Tool[] = [
   {
-    icon: "⌚",
+    icon: "watch-outline",
     label: "اقتران ساعة KT37",
     sub: "ربط ساعة جديدة بطفلك",
-    tint: color.teal,
     href: "/tools/pair-watch",
   },
   {
-    icon: "🆔",
+    icon: "qr-code-outline",
     label: "معرّف أكبادنا",
-    sub: "ربط الساعة بأي شخص بالمعرّف",
-    tint: color.purple,
+    sub: "ربط الساعة بشخص موثوق",
     href: "/tools/akbid",
   },
   {
-    icon: "📅",
+    icon: "calendar-outline",
     label: "جدول الحصص",
-    sub: "عرض جدول اليوم كاملاً",
-    tint: color.blue,
+    sub: "جدول اليوم كاملًا",
     href: "/tools/schedule",
   },
   {
-    icon: "🗺️",
+    icon: "walk-outline",
     label: "تتبع الخروج",
     sub: "توجيه الطالب لموقع الانتظار",
-    tint: color.teal,
     href: "/tools/tracking",
   },
   {
-    icon: "❤️",
+    icon: "pulse-outline",
     label: "الصحة والحيويات",
-    sub: "نبض، حرارة، نشاط",
-    tint: color.red,
+    sub: "النبض والحرارة والنشاط",
     href: "/tools/health",
   },
   {
-    icon: "💰",
+    icon: "card-outline",
     label: "المحفظة المدرسية",
-    sub: "الرصيد، الشحن، السجل",
-    tint: color.yellow,
+    sub: "الرصيد والشحن والسجل",
     href: "/tools/wallet",
   },
   {
-    icon: "🏫",
+    icon: "business-outline",
     label: "ربط نظام نور",
-    sub: "جلب بيانات الطالب من الوزارة",
-    tint: "#1A5276",
+    sub: "جلب بيانات الطالب الرسمية",
     href: "/tools/noor",
   },
   {
-    icon: "📡",
+    icon: "analytics-outline",
     label: "اللوحة المباشرة",
     sub: "تتبع كل الساعات — للمدرسة",
-    tint: color.purple,
     href: "/tools/receiver",
   },
 ];
@@ -93,24 +94,21 @@ export default function More() {
 
   return (
     <Screen>
-      <AppText variant="title" style={{ paddingVertical: space.lg }}>
-        ⋯ المزيد
+      <AppText variant="title" style={{ paddingVertical: space.md }}>
+        المزيد
       </AppText>
 
-      <Card style={{ marginBottom: space.lg }}>
-        <AppText variant="label" style={{ marginBottom: space.sm }}>
-          وضع المستخدم
-        </AppText>
-        <View style={{ flexDirection: "row", gap: space.sm }}>
+      <SectionHeader>وضع المستخدم</SectionHeader>
+      <Card padding={space.sm}>
+        <View style={{ flexDirection: "row", gap: space.xs }}>
           {ROLES.map((r) => {
             const active = activeRole === r.id;
             return (
               <Button
                 key={r.id}
-                label={`${r.emoji} ${r.label}`}
+                label={r.label}
                 size="sm"
-                accent={color.teal}
-                variant={active ? "solid" : "outline"}
+                variant={active ? "primary" : "ghost"}
                 onPress={() => void setActiveRole(r.id)}
                 style={{ flex: 1 }}
               />
@@ -119,61 +117,40 @@ export default function More() {
         </View>
       </Card>
 
-      <SectionTitle>الأدوات</SectionTitle>
-      <View style={{ gap: space.sm }}>
+      <SectionHeader>الخدمات</SectionHeader>
+      <RowGroup>
         {TOOLS.map((t) => (
-          <Card
+          <ListRow
             key={t.label}
+            icon={t.icon}
+            title={t.label}
+            subtitle={t.sub}
             onPress={t.href ? () => router.push(t.href!) : undefined}
-            style={{ flexDirection: "row", alignItems: "center", gap: space.md }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.md,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: alpha(t.tint, 0.18),
-              }}
-            >
-              <AppText style={{ fontSize: 22 }}>{t.icon}</AppText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <AppText variant="heading">{t.label}</AppText>
-              <AppText variant="label">{t.sub}</AppText>
-            </View>
-            <AppText variant="label" color={color.textDim}>
-              {t.href ? "‹" : "قريبًا"}
-            </AppText>
-          </Card>
+          />
         ))}
-      </View>
+      </RowGroup>
 
       {!isDemo && (
         <>
-          <SectionTitle>الحساب</SectionTitle>
+          <SectionHeader>الحساب</SectionHeader>
           <Button
-            label="🌱 إنشاء بيانات تجريبية في Firestore"
-            accent={color.green}
-            variant="outline"
+            label="إنشاء بيانات تجريبية في Firestore"
+            variant="secondary"
+            icon="leaf-outline"
             loading={seeding}
             onPress={seed}
           />
         </>
       )}
 
-      <View style={{ alignItems: "center", marginVertical: space.xl }}>
-        <AppText variant="heading">أكبادنا</AppText>
-        <AppText variant="label">
-          منصة التعليم الذكية — الإصدار 0.1{isDemo ? " · وضع تجريبي" : ""}
-        </AppText>
+      <View style={{ alignItems: "center", marginVertical: space.xxl }}>
+        <AppText variant="caption">أكبادنا · الإصدار 0.1{isDemo ? " · وضع تجريبي" : ""}</AppText>
       </View>
 
       <Button
-        label="🚪 تسجيل الخروج"
-        accent={color.red}
-        variant="outline"
+        label="تسجيل الخروج"
+        variant="danger"
+        icon="log-out-outline"
         onPress={async () => {
           await signOut();
           router.replace("/(auth)/sign-in");

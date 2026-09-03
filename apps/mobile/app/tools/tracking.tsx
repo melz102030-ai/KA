@@ -1,20 +1,29 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { AppText, Button, Card, Pill, ProgressBar, Screen } from "@/components";
+import {
+  AppText,
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Icon,
+  type IconName,
+  ProgressBar,
+  Screen,
+} from "@/components";
 import { useKids } from "@/data/hooks";
-import { alpha, color, font, radius, space } from "@/theme";
+import { color, font, space } from "@/theme";
 
-const SPOTS = [
-  { id: "gate_main", label: "البوابة الرئيسية", icon: "🚗", accent: color.green },
-  { id: "gate_side", label: "البوابة الجانبية", icon: "🚙", accent: color.teal },
-  { id: "parking", label: "موقف السيارات", icon: "🅿️", accent: color.yellow },
-] as const;
-
-const TOTAL = 90; // seconds
+const SPOTS: { id: string; label: string; icon: IconName }[] = [
+  { id: "gate_main", label: "البوابة الرئيسية", icon: "enter-outline" },
+  { id: "gate_side", label: "البوابة الجانبية", icon: "enter-outline" },
+  { id: "parking", label: "موقف السيارات", icon: "car-outline" },
+];
+const TOTAL = 90;
 
 export default function Tracking() {
   const { data: kids } = useKids();
-  const [spot, setSpot] = useState<(typeof SPOTS)[number]["id"]>("gate_main");
+  const [spot, setSpot] = useState("gate_main");
   const [phase, setPhase] = useState<"idle" | "tracking" | "arrived">("idle");
   const [elapsed, setElapsed] = useState(0);
   const r = SPOTS.find((s) => s.id === spot)!;
@@ -37,17 +46,16 @@ export default function Tracking() {
   if (phase === "arrived") {
     return (
       <Screen>
-        <View style={{ alignItems: "center", paddingTop: space.xxl }}>
-          <AppText style={{ fontSize: 64 }}>🎉</AppText>
-          <AppText variant="title" color={color.green}>
-            وصل الطالب!
+        <View style={{ alignItems: "center", paddingTop: space.xxxl, gap: space.sm }}>
+          <View style={styles_check}>
+            <Icon name="checkmark" size={30} color={color.success} />
+          </View>
+          <AppText variant="title" color={color.success}>
+            وصل الطالب
           </AppText>
-          <AppText variant="label">
-            {r.icon} {r.label}
-          </AppText>
+          <AppText variant="label">{r.label}</AppText>
           <Button
             label="طلب خروج جديد"
-            accent={color.teal}
             onPress={() => {
               setPhase("idle");
               setElapsed(0);
@@ -63,16 +71,18 @@ export default function Tracking() {
     const left = Math.max(0, TOTAL - elapsed);
     return (
       <Screen>
-        <Card accent={r.accent} style={{ marginTop: space.md, gap: space.sm }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <AppText variant="heading">الطالب في طريقه</AppText>
-            <Pill label="🔴 مباشر" accent={r.accent} />
+        <Card style={{ marginTop: space.md, gap: space.sm }}>
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+          >
+            <AppText variant="subtitle">الطالب في طريقه</AppText>
+            <Badge label="مباشر" tone="danger" icon="ellipse" />
           </View>
-          <ProgressBar value={(elapsed / TOTAL) * 100} accent={r.accent} height={8} />
+          <ProgressBar value={(elapsed / TOTAL) * 100} height={8} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <AppText variant="label">الفصل</AppText>
-            <AppText variant="label" color={r.accent}>
-              {r.icon} {r.label}
+            <AppText variant="label" color={color.primary}>
+              {r.label}
             </AppText>
           </View>
         </Card>
@@ -86,13 +96,14 @@ export default function Tracking() {
           }}
         >
           <AppText variant="label">الوقت المتبقي</AppText>
-          <AppText style={{ fontFamily: font.family.mono, fontSize: 28, color: r.accent }}>
+          <AppText style={{ fontFamily: font.family.mono, fontSize: 26, color: color.primary }}>
             {left}ث
           </AppText>
         </View>
 
         {kids[0] && (
           <Card
+            padding={space.md}
             style={{
               marginTop: space.md,
               flexDirection: "row",
@@ -100,20 +111,19 @@ export default function Tracking() {
               alignItems: "center",
             }}
           >
-            <AppText style={{ fontSize: 28 }}>{kids[0].photoEmoji}</AppText>
+            <Avatar name={kids[0].name} size={40} />
             <View style={{ flex: 1 }}>
-              <AppText variant="heading">{kids[0].name.split(" ")[0]}</AppText>
-              <AppText variant="label" color={color.teal}>
-                📍 يسير في الممر الرئيسي
+              <AppText variant="subtitle">{kids[0].name.split(" ")[0]}</AppText>
+              <AppText variant="label" color={color.primary}>
+                يسير في الممر الرئيسي
               </AppText>
             </View>
           </Card>
         )}
 
         <Button
-          label="إلغاء"
-          accent={color.red}
-          variant="outline"
+          label="إلغاء الطلب"
+          variant="danger"
           onPress={() => {
             setPhase("idle");
             setElapsed(0);
@@ -135,36 +145,40 @@ export default function Tracking() {
           return (
             <Card
               key={s.id}
-              accent={active ? s.accent : undefined}
               onPress={() => setSpot(s.id)}
-              style={{ flexDirection: "row", alignItems: "center", gap: space.md }}
+              padding={space.md}
+              style={
+                active
+                  ? { borderColor: color.primary, backgroundColor: color.primarySoft }
+                  : undefined
+              }
             >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: radius.md,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: alpha(s.accent, 0.18),
-                }}
-              >
-                <AppText style={{ fontSize: 22 }}>{s.icon}</AppText>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                <Icon name={s.icon} size={20} color={active ? color.primary : color.textMuted} />
+                <AppText variant="subtitle" style={{ flex: 1 }}>
+                  {s.label}
+                </AppText>
+                {active && <Icon name="checkmark-circle" size={20} color={color.primary} />}
               </View>
-              <AppText variant="heading" style={{ flex: 1 }}>
-                {s.label}
-              </AppText>
-              {active && <AppText color={s.accent}>✓</AppText>}
             </Card>
           );
         })}
       </View>
       <Button
-        label="📲 طلب خروج الطالب"
-        accent={color.teal}
+        label="طلب خروج الطالب"
+        icon="paper-plane-outline"
         onPress={() => setPhase("tracking")}
         style={{ marginTop: space.lg }}
       />
     </Screen>
   );
 }
+
+const styles_check = {
+  width: 56,
+  height: 56,
+  borderRadius: 28,
+  backgroundColor: color.successSoft,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+};

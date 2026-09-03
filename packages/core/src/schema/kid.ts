@@ -22,7 +22,8 @@ export type KidLiveState = z.infer<typeof KidLiveState>;
 export const Kid = Audit.extend({
   id: z.string().min(1),
   name: z.string().min(1),
-  photoEmoji: z.string().emoji().default("🧒"),
+  /** Optional avatar glyph; the app renders initials, so this is not required. */
+  avatarGlyph: z.string().optional(),
   birthDate: z.string().date().optional(),
   schoolId: z.string().optional(),
   classId: z.string().optional(),

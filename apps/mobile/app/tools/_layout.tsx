@@ -5,9 +5,10 @@ export default function ToolsLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: color.bg },
-        headerTintColor: color.text,
-        headerTitleStyle: { fontFamily: font.family.sansBold },
+        headerStyle: { backgroundColor: color.surface },
+        headerShadowVisible: false,
+        headerTintColor: color.primary,
+        headerTitleStyle: { fontFamily: font.family.bold, color: color.text },
         contentStyle: { backgroundColor: color.bg },
       }}
     >

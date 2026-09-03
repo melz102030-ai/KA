@@ -16,7 +16,7 @@ export default function Index() {
           justifyContent: "center",
         }}
       >
-        <ActivityIndicator color={color.teal} size="large" />
+        <ActivityIndicator color={color.primary} size="large" />
       </View>
     );
   }

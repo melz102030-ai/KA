@@ -4,14 +4,14 @@ import type { Kid } from "@akbadna/core";
 import {
   AppText,
   Avatar,
+  Badge,
   Button,
   Card,
-  Dot,
-  Pill,
+  Icon,
   ProgressBar,
   Screen,
-  SectionTitle,
-  StatTile,
+  SectionHeader,
+  StatCard,
 } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { useKids } from "@/data/hooks";
@@ -23,14 +23,26 @@ import {
   fmtTime,
   nextPeriod,
   periodProgress,
-  useVitalsColor,
+  vitalsTone,
 } from "@/lib/time";
-import { alpha, color, font, radius, space } from "@/theme";
+import { color, font, space } from "@/theme";
+
+const PRESENCE: Record<
+  string,
+  { label: string; tone: "success" | "info" | "warning" | "neutral" }
+> = {
+  in_class: { label: "في الحصة", tone: "success" },
+  break: { label: "استراحة", tone: "info" },
+  commuting: { label: "في الطريق", tone: "warning" },
+  home: { label: "في المنزل", tone: "neutral" },
+  left_school: { label: "غادر المدرسة", tone: "warning" },
+  activity: { label: "نشاط", tone: "info" },
+  unknown: { label: "غير معروف", tone: "neutral" },
+};
 
 export default function Home() {
-  const { profile } = useAuth();
-  const { data: kids, isDemo } = useKids();
-  const vc = useVitalsColor();
+  const { profile, isDemo } = useAuth();
+  const { data: kids } = useKids();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -38,18 +50,18 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  const cur = currentPeriod(DEMO_SCHEDULE, now);
+  const next = nextPeriod(DEMO_SCHEDULE, now);
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const minsToNext = next ? Math.max(0, toMins(next.start) - mins) : null;
+
   const ping = (k: Kid) =>
-    Alert.alert("📳 نداء", `تم إرسال نداء إلى ساعة ${k.name.split(" ")[0]} — ستهتز الآن.`);
-
+    Alert.alert("إرسال نداء", `سيتم تنبيه ساعة ${k.name.split(" ")[0]} الآن.`);
   const locate = (k: Kid) =>
-    Alert.alert(
-      "📍 الموقع",
-      k.live.location ? `آخر موقع معروف لـ ${k.name.split(" ")[0]}.` : "لا يوجد موقع محدث بعد.",
-    );
-
+    Alert.alert("الموقع", k.live.location ? "عرض آخر موقع معروف." : "لا يوجد موقع محدّث بعد.");
   const sos = async (k: Kid) => {
     if (!k.watchId || !k.live.location) {
-      Alert.alert("🆘 SOS", "لا توجد ساعة مرتبطة بموقع حالي لهذا الطفل.");
+      Alert.alert("استغاثة", "لا توجد ساعة مرتبطة بموقع حالي.");
       return;
     }
     try {
@@ -58,202 +70,150 @@ export default function Home() {
         lat: k.live.location.lat,
         lng: k.live.location.lng,
       });
-      Alert.alert("🆘 SOS", "تم رفع تنبيه الاستغاثة وإشعار الجهات.");
+      Alert.alert("استغاثة", "تم رفع التنبيه وإشعار الجهات.");
     } catch {
-      Alert.alert("🆘 SOS", "تعذّر الاتصال بالخادم.");
+      Alert.alert("استغاثة", "تعذّر الاتصال بالخادم.");
     }
   };
 
-  const cur = currentPeriod(DEMO_SCHEDULE, now);
-  const next = nextPeriod(DEMO_SCHEDULE, now);
-  const minsToNext = next
-    ? Math.max(0, Math.round(toMins(next.start) - (now.getHours() * 60 + now.getMinutes())))
-    : null;
-
   return (
     <Screen>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          paddingVertical: space.lg,
-        }}
-      >
+      <View style={styles_header}>
         <View>
-          <AppText variant="label">مرحباً 👋</AppText>
+          <AppText variant="label">مرحبًا</AppText>
           <AppText variant="title">{profile?.displayName ?? "أكبادنا"}</AppText>
         </View>
-        <Avatar emoji="👨" size={46} accent={color.blue} />
+        <View style={styles_bell}>
+          <Icon name="notifications-outline" size={20} color={color.text} />
+        </View>
       </View>
 
       {isDemo && (
-        <Card accent={color.yellow} style={{ marginBottom: space.md, paddingVertical: space.sm }}>
-          <AppText variant="label" color={color.yellow}>
-            بيانات تجريبية — لم يتم ربط مدرسة أو ساعة بعد
+        <Card
+          padding={space.md}
+          style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}
+        >
+          <Icon name="information-circle-outline" size={18} color={color.info} />
+          <AppText variant="label" style={{ flex: 1 }}>
+            وضع تجريبي — لم يتم ربط مدرسة أو ساعة بعد.
           </AppText>
         </Card>
       )}
 
-      {/* Big clock */}
-      <Card
-        accent={color.teal}
-        glow
-        style={{ alignItems: "center", paddingVertical: space.xl, marginBottom: space.md }}
-      >
-        <AppText variant="label" color={color.teal}>
-          ⌚ أكبادنا
-        </AppText>
-        <AppText
-          style={{
-            fontFamily: font.family.mono,
-            fontSize: 46,
-            color: color.text,
-            marginVertical: space.xs,
-          }}
+      {/* Time + current period */}
+      <Card style={{ marginTop: space.md }}>
+        <View
+          style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}
         >
-          {fmtTime(now)}
-        </AppText>
-        <AppText variant="label">{fmtDate(now)}</AppText>
-      </Card>
+          <AppText style={{ fontFamily: font.family.mono, fontSize: 30, color: color.text }}>
+            {fmtTime(now)}
+          </AppText>
+          <AppText variant="label">{fmtDate(now)}</AppText>
+        </View>
 
-      {/* Current period */}
-      {cur ? (
-        <Card style={{ marginBottom: space.sm }}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: space.sm,
-            }}
-          >
-            <View>
-              <AppText variant="label">الحصة الحالية</AppText>
-              <AppText variant="heading">{cur.name}</AppText>
-              <AppText variant="label">
-                {cur.start} – {cur.end}
-              </AppText>
-            </View>
-            <Pill label="جارية" accent={color.teal} />
-          </View>
-          <ProgressBar value={periodProgress(cur, now) * 100} accent={color.teal} />
-        </Card>
-      ) : (
-        <Card style={{ alignItems: "center", marginBottom: space.sm, paddingVertical: space.lg }}>
-          <AppText style={{ fontSize: 28 }}>🌙</AppText>
-          <AppText variant="label">لا توجد حصة حالياً</AppText>
-        </Card>
-      )}
-
-      {/* Next period */}
-      {next && minsToNext !== null && minsToNext > 0 && (
-        <Card
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: space.md,
-            marginBottom: space.md,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <AppText variant="label">الحصة التالية</AppText>
-            <AppText variant="heading">{next.name}</AppText>
-          </View>
-          <View
-            style={{
-              backgroundColor: alpha(color.yellow, 0.15),
-              borderRadius: radius.md,
-              paddingVertical: 6,
-              paddingHorizontal: 12,
-              alignItems: "center",
-            }}
-          >
-            <AppText
+        {cur ? (
+          <View style={{ marginTop: space.lg, gap: space.sm }}>
+            <View
               style={{
-                color: color.yellow,
-                fontFamily: font.family.sansBlack,
-                fontSize: font.size.xl,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              {minsToNext}
-            </AppText>
-            <AppText style={{ color: color.yellow, fontSize: 9 }}>دقيقة</AppText>
+              <View>
+                <AppText variant="caption">الحصة الحالية</AppText>
+                <AppText variant="subtitle">{cur.name}</AppText>
+              </View>
+              <Badge label={`${cur.start} – ${cur.end}`} tone="primary" />
+            </View>
+            <ProgressBar value={periodProgress(cur, now) * 100} />
           </View>
-        </Card>
-      )}
+        ) : (
+          <AppText variant="label" style={{ marginTop: space.lg }}>
+            لا توجد حصة حالية.
+          </AppText>
+        )}
 
-      {/* Kids */}
-      <SectionTitle>أبنائي</SectionTitle>
+        {next && minsToNext !== null && minsToNext > 0 && (
+          <View style={styles_next}>
+            <Icon name="time-outline" size={16} color={color.textMuted} />
+            <AppText variant="label" style={{ flex: 1 }}>
+              التالية: {next.name}
+            </AppText>
+            <AppText variant="subtitle" color={color.primary}>
+              {minsToNext} د
+            </AppText>
+          </View>
+        )}
+      </Card>
+
+      <SectionHeader>الأبناء</SectionHeader>
       <View style={{ gap: space.md }}>
         {kids.map((k) => {
           const hr = k.live.heartRate ?? 0;
           const temp = k.live.skinTempC ?? 0;
           const batt = k.live.batteryPct ?? 0;
+          const pres = PRESENCE[k.live.presence] ?? PRESENCE.unknown!;
           return (
             <Card key={k.id}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: space.md,
-                  marginBottom: space.md,
-                }}
-              >
-                <Avatar emoji={k.photoEmoji} size={46} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                <Avatar name={k.name} size={44} />
                 <View style={{ flex: 1 }}>
-                  <AppText variant="heading">{k.name}</AppText>
+                  <AppText variant="subtitle">{k.name}</AppText>
                   <AppText variant="label">{k.gradeLabel}</AppText>
-                  <AppText
-                    style={{
-                      color: color.purple,
-                      fontSize: 10,
-                      fontFamily: font.family.mono,
-                      marginTop: 2,
-                    }}
-                  >
-                    🆔 {k.akbadnaId}
-                  </AppText>
                 </View>
-                <Dot color={k.live.watchOnline ? color.green : color.textDim} />
-              </View>
-              <View style={{ flexDirection: "row", gap: space.sm }}>
-                <StatTile
-                  label="نبض"
-                  value={String(Math.round(hr))}
-                  unit=" bpm"
-                  accent={vc.heartRate(hr)}
+                <Badge
+                  label={pres.label}
+                  tone={pres.tone}
+                  icon={k.live.watchOnline ? "ellipse" : "ellipse-outline"}
                 />
-                <StatTile label="حرارة" value={temp.toFixed(1)} unit="°" accent={color.teal} />
-                <StatTile
-                  label="بطارية"
+              </View>
+
+              <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
+                <StatCard
+                  label="النبض"
+                  value={String(Math.round(hr))}
+                  unit="bpm"
+                  icon="heart-outline"
+                  tone={vitalsTone.heartRate(hr)}
+                />
+                <StatCard
+                  label="الحرارة"
+                  value={temp.toFixed(1)}
+                  unit="°"
+                  icon="thermometer-outline"
+                />
+                <StatCard
+                  label="البطارية"
                   value={String(Math.round(batt))}
                   unit="%"
-                  accent={vc.battery(batt)}
+                  icon="battery-half-outline"
+                  tone={vitalsTone.battery(batt)}
                 />
               </View>
+
               <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
                 <Button
-                  label="📳 نداء"
+                  label="نداء"
                   size="sm"
-                  variant="outline"
-                  accent={color.teal}
+                  variant="secondary"
+                  icon="notifications-outline"
                   onPress={() => ping(k)}
                   style={{ flex: 1 }}
                 />
                 <Button
-                  label="📍 موقع"
+                  label="الموقع"
                   size="sm"
-                  variant="outline"
-                  accent={color.yellow}
+                  variant="secondary"
+                  icon="location-outline"
                   onPress={() => locate(k)}
                   style={{ flex: 1 }}
                 />
                 <Button
-                  label="🆘 SOS"
+                  label="استغاثة"
                   size="sm"
-                  variant="outline"
-                  accent={color.red}
+                  variant="danger"
+                  icon="warning-outline"
                   onPress={() => sos(k)}
                   style={{ flex: 1 }}
                 />
@@ -269,4 +229,30 @@ export default function Home() {
 const toMins = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
+};
+
+const styles_header = {
+  flexDirection: "row" as const,
+  justifyContent: "space-between" as const,
+  alignItems: "center" as const,
+  paddingVertical: space.md,
+};
+const styles_bell = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: color.surface,
+  borderWidth: 1,
+  borderColor: color.border,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+};
+const styles_next = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  gap: space.sm,
+  marginTop: space.md,
+  paddingTop: space.md,
+  borderTopWidth: 1,
+  borderTopColor: color.border,
 };

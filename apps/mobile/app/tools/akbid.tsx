@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { AppText, Avatar, Button, Card, Screen } from "@/components";
+import { AppText, Avatar, Button, Card, Icon, Screen } from "@/components";
 import { useKids } from "@/data/hooks";
 import { color, font, radius, space } from "@/theme";
 
@@ -17,10 +17,9 @@ export default function AkbIdScreen() {
           {kids.map((k, i) => (
             <Button
               key={k.id}
-              label={`${k.photoEmoji} ${k.name.split(" ")[0]}`}
+              label={k.name.split(" ")[0] ?? ""}
               size="sm"
-              variant={i === idx ? "solid" : "outline"}
-              accent={color.purple}
+              variant={i === idx ? "primary" : "secondary"}
               onPress={() => setIdx(i)}
               style={{ flex: 1 }}
             />
@@ -28,36 +27,25 @@ export default function AkbIdScreen() {
         </View>
       )}
 
-      <Card
-        accent={color.purple}
-        glow
-        style={{ marginTop: space.md, alignItems: "center", paddingVertical: space.xl }}
-      >
-        <Avatar emoji={kid.photoEmoji} size={64} accent={color.purple} />
-        <AppText variant="heading" style={{ marginTop: space.sm }}>
+      <Card style={{ marginTop: space.md, alignItems: "center", paddingVertical: space.xl }}>
+        <Avatar name={kid.name} size={60} />
+        <AppText variant="subtitle" style={{ marginTop: space.md }}>
           {kid.name}
         </AppText>
         <AppText variant="label">{kid.gradeLabel}</AppText>
 
-        <View
-          style={{
-            marginTop: space.lg,
-            paddingVertical: space.md,
-            paddingHorizontal: space.xl,
-            borderRadius: radius.lg,
-            backgroundColor: "rgba(0,0,0,0.25)",
-          }}
-        >
-          <AppText variant="label" style={{ textAlign: "center" }}>
+        <View style={styles_idbox}>
+          <AppText variant="caption" style={{ textAlign: "center" }}>
             رقم المعرّف الفريد
           </AppText>
           <AppText
             style={{
               fontFamily: font.family.mono,
-              fontSize: 24,
+              fontSize: 22,
               color: color.text,
               letterSpacing: 3,
               marginTop: 4,
+              textAlign: "center",
             }}
           >
             {kid.akbadnaId}
@@ -65,22 +53,30 @@ export default function AkbIdScreen() {
         </View>
 
         <Button
-          label="📋 نسخ المعرّف"
-          accent={color.teal}
+          label="نسخ المعرّف"
           size="sm"
+          variant="secondary"
+          icon="copy-outline"
           style={{ marginTop: space.lg }}
         />
       </Card>
 
-      <Card
-        accent={color.teal}
-        style={{ marginTop: space.md, flexDirection: "row", gap: space.sm }}
-      >
-        <AppText>🔒</AppText>
+      <Card padding={space.md} style={{ marginTop: space.md, flexDirection: "row", gap: space.sm }}>
+        <Icon name="lock-closed-outline" size={16} color={color.textMuted} />
         <AppText variant="label" style={{ flex: 1 }}>
-          شارك هذا المعرّف مع من تثق به فقط — يتيح التواصل الآمن عبر أكبادنا دون الحاجة لرقم جوال.
+          شارك هذا المعرّف مع من تثق بهم فقط — يتيح التواصل الآمن عبر أكبادنا دون الحاجة لرقم جوال.
         </AppText>
       </Card>
     </Screen>
   );
 }
+
+const styles_idbox = {
+  marginTop: space.lg,
+  paddingVertical: space.md,
+  paddingHorizontal: space.xl,
+  borderRadius: radius.md,
+  backgroundColor: color.bg,
+  borderWidth: 1,
+  borderColor: color.border,
+};

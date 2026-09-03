@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
-import { AppText, Card, Dot, Screen } from "@/components";
+import { AppText, Avatar, Card, Dot, Icon, Screen } from "@/components";
 import { useKids } from "@/data/hooks";
-import { color, font, space } from "@/theme";
+import { color, font, radius, space } from "@/theme";
 
-type LogLine = { id: number; text: string; kind: "data" | "alert" | "system" };
+type LogLine = { id: number; text: string };
 
 export default function Receiver() {
   const { data: kids } = useKids();
   const [packets, setPackets] = useState(128);
-  const [log, setLog] = useState<LogLine[]>([
-    { id: 1, kind: "system", text: "WebSocket server — الساعات متصلة" },
-  ]);
+  const [log, setLog] = useState<LogLine[]>([{ id: 1, text: "WebSocket server — الساعات متصلة" }]);
   const scroller = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -28,10 +26,9 @@ export default function Receiver() {
           ...prev,
           {
             id: Date.now(),
-            kind: "data" as const,
-            text: `[${(k?.akbadnaId ?? "AKB-XXXX").slice(4, 8)}] ${time} نبض:${Math.round(
+            text: `[${(k?.akbadnaId ?? "AKB-XXXX").slice(4, 8)}] ${time}  HR ${Math.round(
               k?.live.heartRate ?? 80,
-            )} بطارية:${Math.round(k?.live.batteryPct ?? 90)}%`,
+            )}  BAT ${Math.round(k?.live.batteryPct ?? 90)}%`,
           },
         ].slice(-40),
       );
@@ -39,29 +36,29 @@ export default function Receiver() {
     return () => clearInterval(t);
   }, [kids]);
 
-  const tint = { data: color.teal, alert: color.red, system: color.textMuted };
-
   return (
     <Screen scroll={false} padded={false}>
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.md }}>
         <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.md }}>
           {[
-            { l: "متصل", v: `${kids.length}/${kids.length}`, c: color.green },
-            { l: "حزم", v: String(packets), c: color.teal },
-            { l: "SOS", v: "0", c: color.textMuted },
+            { l: "متصل", v: `${kids.length}/${kids.length}`, icon: "wifi-outline" as const },
+            { l: "حزم", v: String(packets), icon: "cube-outline" as const },
+            { l: "استغاثات", v: "0", icon: "warning-outline" as const },
           ].map((s) => (
-            <Card key={s.l} style={{ flex: 1, alignItems: "center", paddingVertical: space.sm }}>
-              <AppText style={{ fontFamily: font.family.mono, fontSize: 20, color: s.c }}>
+            <View key={s.l} style={styles_stat}>
+              <Icon name={s.icon} size={15} color={color.textMuted} />
+              <AppText style={{ fontFamily: font.family.mono, fontSize: 18, color: color.text }}>
                 {s.v}
               </AppText>
-              <AppText variant="label">{s.l}</AppText>
-            </Card>
+              <AppText variant="caption">{s.l}</AppText>
+            </View>
           ))}
         </View>
 
         {kids.map((k) => (
           <Card
             key={k.id}
+            padding={space.md}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -69,32 +66,21 @@ export default function Receiver() {
               marginBottom: space.sm,
             }}
           >
-            <AppText style={{ fontSize: 22 }}>{k.photoEmoji}</AppText>
+            <Avatar name={k.name} size={34} />
             <View style={{ flex: 1 }}>
-              <AppText variant="heading">{k.name.split(" ")[0]}</AppText>
+              <AppText variant="subtitle">{k.name.split(" ")[0]}</AppText>
               <AppText variant="label">
-                ❤️{Math.round(k.live.heartRate ?? 0)} · 🔋{Math.round(k.live.batteryPct ?? 0)}%
+                {Math.round(k.live.heartRate ?? 0)} bpm · {Math.round(k.live.batteryPct ?? 0)}%
               </AppText>
             </View>
-            <Dot color={k.live.watchOnline ? color.green : color.textDim} />
+            <Dot tone={k.live.watchOnline ? "success" : "neutral"} />
           </Card>
         ))}
       </View>
 
-      <View
-        style={{
-          flex: 1,
-          marginTop: space.sm,
-          marginHorizontal: space.lg,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: color.border,
-          backgroundColor: "#050510",
-          overflow: "hidden",
-        }}
-      >
-        <View style={{ padding: space.sm, borderBottomWidth: 1, borderBottomColor: color.border }}>
-          <AppText style={{ fontFamily: font.family.mono, fontSize: 10, color: color.textMuted }}>
+      <View style={styles_console}>
+        <View style={{ padding: space.sm, borderBottomWidth: 1, borderBottomColor: "#1F2A33" }}>
+          <AppText style={{ fontFamily: font.family.mono, fontSize: 10, color: "#7C8B99" }}>
             LIVE LOG
           </AppText>
         </View>
@@ -109,7 +95,7 @@ export default function Receiver() {
               style={{
                 fontFamily: font.family.mono,
                 fontSize: 10,
-                color: tint[l.kind],
+                color: "#8FE3C6",
                 marginBottom: 3,
               }}
             >
@@ -118,7 +104,27 @@ export default function Receiver() {
           ))}
         </ScrollView>
       </View>
-      <View style={{ height: space.lg }} />
     </Screen>
   );
 }
+
+const styles_stat = {
+  flex: 1,
+  alignItems: "center" as const,
+  backgroundColor: color.surface,
+  borderWidth: 1,
+  borderColor: color.border,
+  borderRadius: radius.md,
+  paddingVertical: space.sm,
+  gap: 2,
+};
+const styles_console = {
+  flex: 1,
+  margin: space.lg,
+  marginTop: space.sm,
+  borderRadius: radius.md,
+  overflow: "hidden" as const,
+  backgroundColor: "#0C1418",
+  borderWidth: 1,
+  borderColor: "#1F2A33",
+};

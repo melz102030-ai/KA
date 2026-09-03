@@ -1,12 +1,20 @@
 import { View } from "react-native";
-import { AppText, Avatar, Card, Pill, ProgressBar, Screen } from "@/components";
+import {
+  AppText,
+  Avatar,
+  Badge,
+  Card,
+  Icon,
+  type IconName,
+  ProgressBar,
+  Screen,
+} from "@/components";
 import { useKids } from "@/data/hooks";
-import { useVitalsColor } from "@/lib/time";
+import { vitalsTone } from "@/lib/time";
 import { color, space } from "@/theme";
 
 export default function HealthScreen() {
   const { data: kids } = useKids();
-  const vc = useVitalsColor();
 
   return (
     <Screen>
@@ -16,26 +24,41 @@ export default function HealthScreen() {
           const temp = k.live.skinTempC ?? 0;
           const batt = k.live.batteryPct ?? 0;
           const steps = k.live.steps ?? 0;
-          const rows: { label: string; value: string; pct: number; accent: string }[] = [
+          const rows: {
+            icon: IconName;
+            label: string;
+            value: string;
+            pct: number;
+            tone: "success" | "warning" | "danger" | "primary";
+          }[] = [
             {
+              icon: "heart-outline",
               label: "نبضات القلب",
               value: `${Math.round(hr)} bpm`,
               pct: hr / 150,
-              accent: vc.heartRate(hr),
+              tone: vitalsTone.heartRate(hr),
             },
             {
+              icon: "thermometer-outline",
               label: "حرارة الجلد",
               value: `${temp.toFixed(1)}°`,
               pct: (temp - 34) / 6,
-              accent: color.teal,
+              tone: "primary",
             },
             {
+              icon: "battery-half-outline",
               label: "البطارية",
               value: `${Math.round(batt)}%`,
               pct: batt / 100,
-              accent: vc.battery(batt),
+              tone: vitalsTone.battery(batt),
             },
-            { label: "الخطوات اليوم", value: `${steps}`, pct: steps / 8000, accent: color.yellow },
+            {
+              icon: "footsteps-outline",
+              label: "الخطوات اليوم",
+              value: `${steps}`,
+              pct: steps / 8000,
+              tone: "primary",
+            },
           ];
           return (
             <Card key={k.id}>
@@ -47,28 +70,29 @@ export default function HealthScreen() {
                   marginBottom: space.md,
                 }}
               >
-                <Avatar emoji={k.photoEmoji} size={48} />
+                <Avatar name={k.name} size={44} />
                 <View style={{ flex: 1 }}>
-                  <AppText variant="heading">{k.name}</AppText>
+                  <AppText variant="subtitle">{k.name}</AppText>
                   <AppText variant="label">{k.gradeLabel}</AppText>
                 </View>
-                <Pill
+                <Badge
                   label={k.live.watchOnline ? "متصلة" : "غير متصلة"}
-                  accent={k.live.watchOnline ? color.green : color.textDim}
+                  tone={k.live.watchOnline ? "success" : "neutral"}
                 />
               </View>
               <View style={{ gap: space.md }}>
                 {rows.map((r) => (
-                  <View key={r.label} style={{ gap: 4 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <AppText variant="label">{r.label}</AppText>
-                      <AppText variant="label" color={r.accent}>
-                        {r.value}
+                  <View key={r.label} style={{ gap: 6 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                      <Icon name={r.icon} size={15} color={color.textMuted} />
+                      <AppText variant="label" style={{ flex: 1 }}>
+                        {r.label}
                       </AppText>
+                      <AppText variant="subtitle">{r.value}</AppText>
                     </View>
                     <ProgressBar
                       value={Math.max(0, Math.min(1, r.pct)) * 100}
-                      accent={r.accent}
+                      tone={r.tone}
                       height={5}
                     />
                   </View>

@@ -32,9 +32,10 @@ export const fmtDate = (d: Date) =>
 export const fmtClock = (d: Date) =>
   `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
-export function useVitalsColor() {
-  return {
-    heartRate: (hr: number) => (hr > 100 ? "#EF4444" : hr > 90 ? "#F59E0B" : "#22C55E"),
-    battery: (b: number) => (b > 50 ? "#22C55E" : b > 20 ? "#F59E0B" : "#EF4444"),
-  };
-}
+type Tone = "success" | "warning" | "danger";
+
+/** Maps a vital reading to a status tone. */
+export const vitalsTone = {
+  heartRate: (hr: number): Tone => (hr > 100 ? "danger" : hr > 90 ? "warning" : "success"),
+  battery: (b: number): Tone => (b > 50 ? "success" : b > 20 ? "warning" : "danger"),
+};

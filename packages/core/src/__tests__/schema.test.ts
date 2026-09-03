@@ -14,7 +14,7 @@ describe("Kid schema", () => {
       createdAt: 0,
       updatedAt: 0,
     });
-    expect(kid.photoEmoji).toBe("🧒");
+    expect(kid.avatarGlyph).toBeUndefined();
     expect(kid.live.presence).toBe("unknown");
     expect(kid.live.watchOnline).toBe(false);
   });

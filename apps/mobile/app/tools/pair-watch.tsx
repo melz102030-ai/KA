@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { TextInput, View } from "react-native";
+import { View } from "react-native";
 import { Imei } from "@akbadna/core";
-import { AppText, Button, Card, Screen } from "@/components";
+import { AppText, Badge, Button, Card, Field, RowGroup, Screen } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { useKids } from "@/data/hooks";
 import { call } from "@/lib/functions";
-import { color, font, radius, space } from "@/theme";
+import { color, font, space } from "@/theme";
 
 type Pending = { watchId: string; code: string; expiresAt: number };
 
@@ -32,7 +32,7 @@ export default function PairWatch() {
   const start = async () => {
     setError(null);
     if (!Imei.safeParse(imei).success) {
-      setError("رقم IMEI يجب أن يكون 15 رقمًا (اطبع *#06# على الساعة).");
+      setError("رقم IMEI يجب أن يكون 15 رقمًا (اطبع ‎*#06#‎ على الساعة).");
       return;
     }
     setBusy(true);
@@ -57,16 +57,12 @@ export default function PairWatch() {
   if (pending) {
     return (
       <Screen>
-        <Card
-          accent={left > 0 ? color.teal : color.red}
-          glow
-          style={{ alignItems: "center", paddingVertical: space.xl, marginTop: space.md }}
-        >
+        <Card style={{ marginTop: space.md, alignItems: "center", paddingVertical: space.xl }}>
           <AppText variant="label">رمز الاقتران</AppText>
           <AppText
             style={{
               fontFamily: font.family.mono,
-              fontSize: 44,
+              fontSize: 40,
               letterSpacing: 8,
               color: color.text,
               marginVertical: space.sm,
@@ -74,22 +70,26 @@ export default function PairWatch() {
           >
             {pending.code}
           </AppText>
-          <AppText variant="label" color={left > 60 ? color.teal : color.red}>
-            {left > 0 ? `ينتهي خلال ${left} ثانية` : "انتهت صلاحية الرمز"}
-          </AppText>
+          <Badge
+            label={left > 0 ? `ينتهي خلال ${left} ثانية` : "انتهت صلاحية الرمز"}
+            tone={left > 60 ? "primary" : "danger"}
+            icon="time-outline"
+          />
         </Card>
 
-        <Card style={{ marginTop: space.md, gap: space.sm }}>
-          <AppText variant="heading">الخطوات على الساعة</AppText>
-          <AppText variant="label">١. شغّل تطبيق أكبادنا على ساعة KT37.</AppText>
-          <AppText variant="label">٢. اختر «اقتران» وأدخل الرمز أعلاه.</AppText>
-          <AppText variant="label">٣. تأكد أن الساعة متصلة بالإنترنت (WiFi أو شريحة).</AppText>
-        </Card>
+        <AppText variant="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>
+          الخطوات على الساعة
+        </AppText>
+        <RowGroup>
+          <StepRow n="1" text="شغّل تطبيق أكبادنا على ساعة KT37." />
+          <StepRow n="2" text="اختر «اقتران» وأدخل الرمز أعلاه." />
+          <StepRow n="3" text="تأكد أن الساعة متصلة بالإنترنت (WiFi أو شريحة)." />
+        </RowGroup>
 
         <Button
           label="رمز جديد"
-          accent={color.teal}
-          variant="outline"
+          variant="secondary"
+          icon="refresh-outline"
           onPress={() => setPending(null)}
           style={{ marginTop: space.md }}
         />
@@ -106,55 +106,72 @@ export default function PairWatch() {
         {kids.map((k) => (
           <Button
             key={k.id}
-            label={`${k.photoEmoji} ${k.name.split(" ")[0]}`}
+            label={k.name.split(" ")[0] ?? ""}
             size="sm"
-            variant={kidId === k.id ? "solid" : "outline"}
-            accent={color.teal}
+            variant={kidId === k.id ? "primary" : "secondary"}
             onPress={() => setKidId(k.id)}
           />
         ))}
       </View>
 
-      <AppText variant="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>
-        IMEI الساعة
-      </AppText>
-      <TextInput
-        value={imei}
-        onChangeText={(t) => setImei(t.replace(/\D/g, "").slice(0, 15))}
-        keyboardType="number-pad"
-        placeholder="١٥ رقمًا"
-        placeholderTextColor={color.textDim}
-        style={{
-          backgroundColor: color.surfaceStrong,
-          borderColor: color.border,
-          borderWidth: 1,
-          borderRadius: radius.md,
-          padding: space.md,
-          color: color.text,
-          fontFamily: font.family.mono,
-          fontSize: font.size.lg,
-          letterSpacing: 2,
-          textAlign: "left",
-        }}
-      />
-      {error && (
-        <AppText variant="label" color={color.red} style={{ marginTop: space.sm }}>
-          {error}
-        </AppText>
-      )}
+      <View style={{ marginTop: space.lg }}>
+        <Field
+          label="IMEI الساعة"
+          value={imei}
+          onChangeText={(t) => setImei(t.replace(/\D/g, "").slice(0, 15))}
+          keyboardType="number-pad"
+          placeholder="15 رقمًا"
+          style={{ textAlign: "left", fontFamily: font.family.mono, letterSpacing: 2 }}
+          error={error ?? undefined}
+        />
+      </View>
 
       <Button
         label="بدء الاقتران"
-        accent={color.teal}
+        icon="link-outline"
         loading={busy}
         onPress={start}
         style={{ marginTop: space.lg }}
       />
       {isDemo && (
-        <AppText variant="label" style={{ textAlign: "center", marginTop: space.sm }}>
+        <AppText variant="caption" style={{ textAlign: "center", marginTop: space.sm }}>
           وضع تجريبي — سيُنشأ رمز وهمي
         </AppText>
       )}
     </Screen>
+  );
+}
+
+function StepRow({ n, text }: { n: string; text: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
+        borderBottomWidth: 1,
+        borderBottomColor: color.border,
+      }}
+    >
+      <View
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          backgroundColor: color.primarySoft,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <AppText variant="caption" color={color.primary}>
+          {n}
+        </AppText>
+      </View>
+      <AppText variant="body" style={{ flex: 1 }}>
+        {text}
+      </AppText>
+    </View>
   );
 }

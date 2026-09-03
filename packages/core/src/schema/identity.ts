@@ -11,7 +11,6 @@ export const UserProfile = Audit.extend({
   displayName: z.string().min(1).max(80),
   phone: SaudiPhone.optional(),
   email: z.string().email().optional(),
-  photoEmoji: z.string().emoji().optional(),
   roles: z.array(Role).min(1),
   activeRole: Role,
   locale: Locale.default("ar"),

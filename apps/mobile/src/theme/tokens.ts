@@ -1,44 +1,83 @@
-/** Design tokens — the single visual vocabulary for the app. */
-
-export const palette = {
-  teal: "#4ECDC4",
-  tealDark: "#2BB5AB",
-  blue: "#45B7D1",
-  green: "#22C55E",
-  greenDark: "#16A34A",
-  yellow: "#F59E0B",
-  red: "#EF4444",
-  purple: "#A78BFA",
-  pink: "#FF6B9D",
-} as const;
+/**
+ * Design tokens — one restrained, institutional visual language.
+ * Light surface, a single primary accent, hairline borders, weight-driven
+ * hierarchy. No decorative colour, no glow.
+ */
 
 export const color = {
-  ...palette,
-  bg: "#070711",
-  surface: "rgba(255,255,255,0.04)",
-  surfaceStrong: "rgba(255,255,255,0.08)",
-  border: "rgba(255,255,255,0.08)",
-  text: "#FFFFFF",
-  textMuted: "#8A8A99",
-  textDim: "#4A4A57",
+  // brand
+  primary: "#0E7A5F",
+  primaryDark: "#0A5F49",
+  primarySoft: "#E7F2EF",
+
+  // surfaces
+  bg: "#F4F6F8",
+  surface: "#FFFFFF",
+  surfaceAlt: "#FAFBFC",
+  overlay: "rgba(16,21,27,0.45)",
+
+  // lines
+  border: "#E5E8EC",
+  borderStrong: "#D3D8DF",
+
+  // text
+  text: "#10151B",
+  textMuted: "#5A6472",
+  textDim: "#98A1AD",
+  onPrimary: "#FFFFFF",
+
+  // status (used only for real status, never decoration)
+  success: "#1E8E4E",
+  successSoft: "#E7F4EC",
+  warning: "#A66300",
+  warningSoft: "#FAF0DE",
+  danger: "#C0362C",
+  dangerSoft: "#FBEAE8",
+  info: "#1B6EC2",
+  infoSoft: "#E8F0FA",
 } as const;
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 28,
+  xxxl: 40,
+} as const;
 
-export const radius = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
+export const radius = { sm: 8, md: 10, lg: 14, xl: 20, pill: 999 } as const;
 
 export const font = {
   family: {
-    sans: "Tajawal_400Regular",
-    sansMedium: "Tajawal_500Medium",
-    sansBold: "Tajawal_700Bold",
-    sansBlack: "Tajawal_900Black",
+    regular: "Tajawal_400Regular",
+    medium: "Tajawal_500Medium",
+    bold: "Tajawal_700Bold",
+    black: "Tajawal_900Black",
     mono: "SpaceMono_400Regular",
   },
-  size: { xs: 10, sm: 12, md: 14, lg: 16, xl: 20, xxl: 28, display: 44 },
+  size: { xs: 11, sm: 13, md: 15, lg: 17, xl: 22, xxl: 28 },
 } as const;
 
-/** Hex + 0..1 alpha -> "#rrggbbaa". Accepts palette hex strings. */
+export const shadow = {
+  card: {
+    shadowColor: "#0B1F2A",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  raised: {
+    shadowColor: "#0B1F2A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+} as const;
+
+/** hex + 0..1 alpha -> "#rrggbbaa" */
 export function alpha(hex: string, a: number): string {
   const clamped = Math.max(0, Math.min(1, a));
   const byte = Math.round(clamped * 255)
