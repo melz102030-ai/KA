@@ -13,7 +13,11 @@ export function useKids(): Feed<Kid> {
   const [state, setState] = useState<Feed<Kid>>({ data: DEMO_KIDS, loading: true, isDemo: true });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // demo session or signed out — just show sample data
+      setState({ data: DEMO_KIDS, loading: false, isDemo: true });
+      return;
+    }
     const q = query(
       collection(db, paths.kids()),
       where("guardianUids", "array-contains", user.uid),

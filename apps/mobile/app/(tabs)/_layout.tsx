@@ -10,9 +10,9 @@ const icon =
   );
 
 export default function TabsLayout() {
-  const { initializing, user, profile } = useAuth();
+  const { initializing, authed } = useAuth();
   if (initializing) return null;
-  if (!user || !profile) return <Redirect href="/(auth)/sign-in" />;
+  if (!authed) return <Redirect href="/(auth)/sign-in" />;
 
   return (
     <Tabs

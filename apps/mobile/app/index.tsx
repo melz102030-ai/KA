@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { color } from "@/theme";
 
 export default function Index() {
-  const { initializing, user, profile } = useAuth();
+  const { initializing, authed } = useAuth();
 
   if (initializing) {
     return (
@@ -21,6 +21,5 @@ export default function Index() {
     );
   }
 
-  if (!user || !profile) return <Redirect href="/(auth)/sign-in" />;
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href={authed ? "/(tabs)" : "/(auth)/sign-in"} />;
 }

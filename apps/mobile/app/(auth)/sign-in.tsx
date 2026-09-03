@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Platform, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { Redirect } from "expo-router";
 import type { Role } from "@akbadna/core";
 import { AppText, Button, Card, Screen } from "@/components";
 import { useAuth } from "@/lib/auth";
@@ -12,17 +12,25 @@ const ROLES: { id: Role; label: string; sub: string; emoji: string; accent: stri
 ];
 
 export default function SignIn() {
-  const { signInDev, phoneAuthAvailable } = useAuth();
+  const { signInDev, phoneAuthAvailable, authed } = useAuth();
   const [role, setRole] = useState<Role>("parent");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [tried, setTried] = useState(false);
+
+  // Navigate once a session exists (real or demo) — avoids a redirect race.
+  useEffect(() => {
+    if (authed) setBusy(false);
+  }, [authed]);
+
+  if (authed) return <Redirect href="/(tabs)" />;
 
   const enter = async () => {
     setBusy(true);
+    setTried(true);
     try {
       await signInDev(role, name);
-      router.replace("/(tabs)");
     } finally {
       setBusy(false);
     }
@@ -118,6 +126,11 @@ export default function SignIn() {
           }}
         />
         <Button label="دخول تجريبي سريع" accent={color.teal} loading={busy} onPress={enter} />
+        {tried && !busy && !authed && (
+          <AppText variant="label" color={color.yellow} style={{ textAlign: "center" }}>
+            جارٍ التحضير… إن لم تنتقل الشاشة، فعّل «Anonymous» في مصادقة Firebase.
+          </AppText>
+        )}
       </View>
 
       <AppText variant="label" style={{ textAlign: "center", marginTop: space.lg }}>

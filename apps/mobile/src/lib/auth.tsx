@@ -21,6 +21,10 @@ import { call } from "./functions";
 
 type AuthState = {
   initializing: boolean;
+  /** True once there is a usable session (real or local demo). */
+  authed: boolean;
+  /** True when running on a local demo session (Firebase not reachable / not set up). */
+  isDemo: boolean;
   user: User | null;
   profile: UserProfile | null;
   /** Native phone auth needs a dev build; false means only dev sign-in is offered. */
@@ -32,29 +36,42 @@ type AuthState = {
 
 const Ctx = createContext<AuthState | null>(null);
 
+const makeProfile = (role: Role, name: string, uid = "demo-user"): UserProfile => ({
+  uid,
+  displayName: name,
+  roles: [role],
+  activeRole: role,
+  locale: "ar",
+  fcmTokens: [],
+  disabled: false,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+});
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [remoteProfile, setRemoteProfile] = useState<UserProfile | null>(null);
+  const [demoProfile, setDemoProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (!u) {
-        setProfile(null);
+        setRemoteProfile(null);
         setInitializing(false);
       }
     });
   }, []);
 
-  // Live profile subscription
+  // Live profile subscription (real sessions only)
   useEffect(() => {
     if (!user) return;
     const ref = doc(db, paths.user(user.uid));
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setProfile(snap.exists() ? (snap.data() as UserProfile) : null);
+        setRemoteProfile(snap.exists() ? (snap.data() as UserProfile) : null);
         setInitializing(false);
       },
       () => setInitializing(false),
@@ -63,32 +80,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const signInDev = useCallback<AuthState["signInDev"]>(async (role, displayName) => {
-    const cred = await signInAnonymously(auth);
     const name = displayName?.trim() || (role === "teacher" ? "معلم" : "ولي أمر");
     try {
-      await call("bootstrapProfile", { displayName: name, activeRole: role, locale: "ar" });
+      const cred = await signInAnonymously(auth);
+      try {
+        await call("bootstrapProfile", { displayName: name, activeRole: role, locale: "ar" });
+      } catch {
+        // functions not deployed — write the profile from the client
+        await setDoc(doc(db, paths.user(cred.user.uid)), makeProfile(role, name, cred.user.uid), {
+          merge: true,
+        });
+      }
     } catch {
-      // functions not deployed yet — fall back to a client-written profile
-      await setDoc(
-        doc(db, paths.user(cred.user.uid)),
-        {
-          uid: cred.user.uid,
-          displayName: name,
-          roles: [role],
-          activeRole: role,
-          locale: "ar",
-          fcmTokens: [],
-          disabled: false,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        },
-        { merge: true },
-      );
+      // Firebase not set up yet (Anonymous auth off / no Firestore) — run a local demo session
+      setDemoProfile(makeProfile(role, name));
     }
   }, []);
 
   const setActiveRole = useCallback<AuthState["setActiveRole"]>(
     async (role) => {
+      if (demoProfile) {
+        setDemoProfile((p) => (p ? { ...p, activeRole: role } : p));
+        return;
+      }
       if (!user) return;
       await setDoc(
         doc(db, paths.user(user.uid)),
@@ -96,16 +110,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { merge: true },
       );
     },
-    [user],
+    [user, demoProfile],
   );
 
   const signOut = useCallback(async () => {
-    await fbSignOut(auth);
+    setDemoProfile(null);
+    if (auth.currentUser) await fbSignOut(auth);
   }, []);
+
+  const profile = remoteProfile ?? demoProfile;
 
   const value = useMemo<AuthState>(
     () => ({
       initializing,
+      authed: !!(user || demoProfile) && !!profile,
+      isDemo: !!demoProfile,
       user,
       profile,
       phoneAuthAvailable: Platform.OS === "web",
@@ -113,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveRole,
       signOut,
     }),
-    [initializing, user, profile, signInDev, setActiveRole, signOut],
+    [initializing, user, demoProfile, profile, signInDev, setActiveRole, signOut],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -129,15 +148,5 @@ export function useAuth(): AuthState {
 export async function ensureProfile(uid: string, role: Role): Promise<void> {
   const ref = doc(db, paths.user(uid));
   if ((await getDoc(ref)).exists()) return;
-  await setDoc(ref, {
-    uid,
-    displayName: role === "teacher" ? "معلم" : "ولي أمر",
-    roles: [role],
-    activeRole: role,
-    locale: "ar",
-    fcmTokens: [],
-    disabled: false,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
+  await setDoc(ref, makeProfile(role, role === "teacher" ? "معلم" : "ولي أمر", uid));
 }
