@@ -4,41 +4,51 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { Platform } from "react-native";
 import {
   onAuthStateChanged,
+  RecaptchaVerifier,
   signInAnonymously,
+  signInWithPhoneNumber,
   signOut as fbSignOut,
+  type ConfirmationResult,
   type User,
 } from "firebase/auth";
 import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { paths, type Role, type UserProfile } from "@akbadna/core";
 import { auth, db } from "./firebase";
 import { call } from "./functions";
+import { USE_FUNCTIONS } from "./config";
+
+type PhoneStep = "idle" | "sent";
 
 type AuthState = {
   initializing: boolean;
-  /** True once there is a usable session (real or local demo). */
   authed: boolean;
-  /** True when running on a local demo session (Firebase not reachable / not set up). */
   isDemo: boolean;
   user: User | null;
   profile: UserProfile | null;
-  /** Native phone auth needs a dev build; false means only dev sign-in is offered. */
+  /** Phone OTP works on web now; native needs a dev build. */
   phoneAuthAvailable: boolean;
+  phoneStep: PhoneStep;
   signInDev: (role: Role, displayName?: string) => Promise<void>;
+  startPhoneVerification: (e164: string) => Promise<void>;
+  confirmPhoneCode: (code: string, role: Role, displayName?: string) => Promise<void>;
+  resetPhone: () => void;
   setActiveRole: (role: Role) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthState | null>(null);
 
-const makeProfile = (role: Role, name: string, uid = "demo-user"): UserProfile => ({
+const makeProfile = (role: Role, name: string, uid: string, phone?: string): UserProfile => ({
   uid,
   displayName: name,
+  ...(phone ? { phone } : {}),
   roles: [role],
   activeRole: role,
   locale: "ar",
@@ -48,11 +58,45 @@ const makeProfile = (role: Role, name: string, uid = "demo-user"): UserProfile =
   updatedAt: Date.now(),
 });
 
+/** Create the profile doc after a real sign-in (client-side, free-plan). */
+async function ensureProfileDoc(uid: string, role: Role, name: string, phone?: string) {
+  if (USE_FUNCTIONS) {
+    try {
+      await call("bootstrapProfile", { displayName: name, activeRole: role, locale: "ar" });
+      return;
+    } catch {
+      /* fall through to client write */
+    }
+  }
+  const ref = doc(db, paths.user(uid));
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await setDoc(ref, { updatedAt: Date.now() }, { merge: true });
+  } else {
+    await setDoc(ref, makeProfile(role, name, uid, phone));
+  }
+}
+
+/** Invisible reCAPTCHA for web phone auth. */
+function webRecaptcha(): RecaptchaVerifier {
+  const id = "akbadna-recaptcha";
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = id;
+    el.style.display = "none";
+    document.body.appendChild(el);
+  }
+  return new RecaptchaVerifier(auth, id, { size: "invisible" });
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [remoteProfile, setRemoteProfile] = useState<UserProfile | null>(null);
   const [demoProfile, setDemoProfile] = useState<UserProfile | null>(null);
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
+  const confirmation = useRef<ConfirmationResult | null>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
@@ -64,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Live profile subscription (real sessions only)
   useEffect(() => {
     if (!user) return;
     const ref = doc(db, paths.user(user.uid));
@@ -83,18 +126,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const name = displayName?.trim() || (role === "teacher" ? "معلم" : "ولي أمر");
     try {
       const cred = await signInAnonymously(auth);
-      try {
-        await call("bootstrapProfile", { displayName: name, activeRole: role, locale: "ar" });
-      } catch {
-        // functions not deployed — write the profile from the client
-        await setDoc(doc(db, paths.user(cred.user.uid)), makeProfile(role, name, cred.user.uid), {
-          merge: true,
-        });
-      }
+      await ensureProfileDoc(cred.user.uid, role, name);
     } catch {
-      // Firebase not set up yet (Anonymous auth off / no Firestore) — run a local demo session
-      setDemoProfile(makeProfile(role, name));
+      setDemoProfile(makeProfile(role, name, "demo-user"));
     }
+  }, []);
+
+  const startPhoneVerification = useCallback<AuthState["startPhoneVerification"]>(async (e164) => {
+    if (Platform.OS !== "web") throw new Error("دخول الجوال يتطلب نسخة تطوير على الأجهزة");
+    const verifier = webRecaptcha();
+    confirmation.current = await signInWithPhoneNumber(auth, e164, verifier);
+    setPhoneStep("sent");
+  }, []);
+
+  const confirmPhoneCode = useCallback<AuthState["confirmPhoneCode"]>(
+    async (code, role, displayName) => {
+      if (!confirmation.current) throw new Error("لم يُرسل رمز بعد");
+      const cred = await confirmation.current.confirm(code);
+      const name = displayName?.trim() || (role === "teacher" ? "معلم" : "ولي أمر");
+      await ensureProfileDoc(cred.user.uid, role, name, cred.user.phoneNumber ?? undefined);
+      confirmation.current = null;
+      setPhoneStep("idle");
+    },
+    [],
+  );
+
+  const resetPhone = useCallback(() => {
+    confirmation.current = null;
+    setPhoneStep("idle");
   }, []);
 
   const setActiveRole = useCallback<AuthState["setActiveRole"]>(
@@ -115,8 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     setDemoProfile(null);
+    resetPhone();
     if (auth.currentUser) await fbSignOut(auth);
-  }, []);
+  }, [resetPhone]);
 
   const profile = remoteProfile ?? demoProfile;
 
@@ -128,11 +188,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       phoneAuthAvailable: Platform.OS === "web",
+      phoneStep,
       signInDev,
+      startPhoneVerification,
+      confirmPhoneCode,
+      resetPhone,
       setActiveRole,
       signOut,
     }),
-    [initializing, user, demoProfile, profile, signInDev, setActiveRole, signOut],
+    [
+      initializing,
+      user,
+      demoProfile,
+      profile,
+      phoneStep,
+      signInDev,
+      startPhoneVerification,
+      confirmPhoneCode,
+      resetPhone,
+      setActiveRole,
+      signOut,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -144,7 +220,6 @@ export function useAuth(): AuthState {
   return v;
 }
 
-/** Best-effort: ensure a profile doc exists for `uid` (used by tests/tools). */
 export async function ensureProfile(uid: string, role: Role): Promise<void> {
   const ref = doc(db, paths.user(uid));
   if ((await getDoc(ref)).exists()) return;

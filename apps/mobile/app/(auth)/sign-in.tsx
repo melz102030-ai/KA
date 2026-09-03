@@ -12,12 +12,21 @@ const ROLES: { id: Role; label: string; sub: string; icon: IconName }[] = [
 ];
 
 export default function SignIn() {
-  const { signInDev, phoneAuthAvailable, authed } = useAuth();
+  const {
+    signInDev,
+    startPhoneVerification,
+    confirmPhoneCode,
+    resetPhone,
+    phoneStep,
+    phoneAuthAvailable,
+    authed,
+  } = useAuth();
   const [role, setRole] = useState<Role>("parent");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tried, setTried] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (authed) setBusy(false);
@@ -25,15 +34,21 @@ export default function SignIn() {
 
   if (authed) return <Redirect href="/(tabs)" />;
 
-  const enter = async () => {
+  const wrap = (fn: () => Promise<void>) => async () => {
+    setErr(null);
     setBusy(true);
-    setTried(true);
     try {
-      await signInDev(role, name);
+      await fn();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "حدث خطأ");
     } finally {
       setBusy(false);
     }
   };
+
+  const enter = wrap(() => signInDev(role, name));
+  const sendOtp = wrap(() => startPhoneVerification(phone.trim()));
+  const verifyOtp = wrap(() => confirmPhoneCode(otp.trim(), role, name));
 
   return (
     <Screen>
@@ -94,32 +109,61 @@ export default function SignIn() {
 
       <View style={{ gap: space.md, marginTop: space.xl }}>
         <Field label="الاسم" value={name} onChangeText={setName} placeholder="الاسم الكامل" />
-        <Field
-          label="رقم الجوال"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder="+9665XXXXXXXX"
-          style={{ textAlign: "left" }}
-          hint={
-            phoneAuthAvailable
-              ? undefined
-              : "الدخول برمز الجوال يتطلب نسخة تطوير — استخدم الدخول التجريبي"
-          }
-        />
+
+        {phoneStep === "idle" ? (
+          <Field
+            label="رقم الجوال"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="+9665XXXXXXXX"
+            style={{ textAlign: "left" }}
+            hint={
+              phoneAuthAvailable
+                ? "سيصلك رمز تحقق برسالة نصية"
+                : "الدخول برمز الجوال يتطلب نسخة تطوير على الأجهزة"
+            }
+          />
+        ) : (
+          <Field
+            label={`رمز التحقق المرسل إلى ${phone}`}
+            value={otp}
+            onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
+            keyboardType="number-pad"
+            placeholder="______"
+            style={{ textAlign: "left", letterSpacing: 6 }}
+          />
+        )}
       </View>
 
       <View style={{ gap: space.sm, marginTop: space.xl }}>
-        <Button
-          label={phoneAuthAvailable ? "إرسال رمز التحقق" : "الدخول برمز الجوال (قريبًا)"}
-          variant="secondary"
-          icon="phone-portrait-outline"
-          disabled={!phoneAuthAvailable || phone.length < 13}
-        />
-        <Button label="دخول تجريبي" icon="log-in-outline" loading={busy} onPress={enter} />
-        {tried && !busy && !authed && (
-          <AppText variant="caption" color={color.warning} style={{ textAlign: "center" }}>
-            جارٍ التحضير… إن لم تنتقل الشاشة، فعّل «Anonymous» في مصادقة Firebase.
+        {phoneStep === "idle" ? (
+          <Button
+            label={
+              phoneAuthAvailable ? "إرسال رمز التحقق" : "الدخول برمز الجوال (على الأجهزة قريبًا)"
+            }
+            variant="secondary"
+            icon="phone-portrait-outline"
+            loading={busy}
+            disabled={!phoneAuthAvailable || phone.trim().length < 13}
+            onPress={sendOtp}
+          />
+        ) : (
+          <>
+            <Button
+              label="تأكيد الرمز"
+              icon="checkmark-outline"
+              loading={busy}
+              disabled={otp.length < 6}
+              onPress={verifyOtp}
+            />
+            <Button label="تغيير الرقم" variant="ghost" onPress={resetPhone} />
+          </>
+        )}
+        <Button label="دخول تجريبي" variant="ghost" icon="log-in-outline" onPress={enter} />
+        {err && (
+          <AppText variant="caption" color={color.danger} style={{ textAlign: "center" }}>
+            {err}
           </AppText>
         )}
       </View>
