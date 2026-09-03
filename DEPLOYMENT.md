@@ -12,9 +12,14 @@ firebase login
 firebase deploy --only firestore:rules,firestore:indexes,hosting
 ```
 
-في وحدة التحكم: فعّل **Anonymous** (و **Phone**)، وأنشئ **Firestore Database**.
-هذا كل شيء — التطبيق كامل الوظائف: العائلات، الانضمام بالرمز، الرسائل، الحضور،
-المحفظة، الكاربول.
+في وحدة التحكم: فعّل **Anonymous** و **Phone** في Authentication، وأنشئ
+**Firestore Database**. **نشر الفهارس (`firestore:indexes`) ضروري** — بدونه
+تفشل استعلامات المحادثات والتنبيهات والكاربول.
+
+هذا كل شيء — التطبيق كامل الوظائف على الخطة المجانية: العائلات، الانضمام بالرمز،
+الرسائل، الحضور، المحفظة، الكاربول، معرّف أكبادنا، التنبيهات.
+
+**اختبار القواعد** (اختياري، يحتاج Java): `cd services/rules-tests && npm i && npm test`
 
 ---
 

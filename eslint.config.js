@@ -40,6 +40,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "apps/web/src/App.jsx",
       "apps/watch/**",
+      "services/rules-tests/**",
     ],
   },
   js.configs.recommended,

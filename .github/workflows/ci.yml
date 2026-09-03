@@ -11,31 +11,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install
-        run: npm ci
-
+      - run: npm ci
       - name: Build shared core
         run: npm run core:build
-
       - name: Unit tests
         run: npm run test -w @akbadna/core
-
       - name: Lint
         run: npm run lint
-
-      - name: Typecheck (core + mobile)
+      - name: Typecheck
         run: |
           npm run typecheck
           npm run typecheck -w @akbadna/mobile
-
       - name: Build Cloud Functions
         run: npm run build -w @akbadna/functions
-
-      - name: Build web app
+      - name: Build web app (reference)
         run: npm run build -w @akbadna/web
+      - name: Export mobile web (the deployed build)
+        run: npm run export:web -w @akbadna/mobile
+
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - name: Firestore rules tests
+        working-directory: services/rules-tests
+        run: |
+          npm install
+          npm test

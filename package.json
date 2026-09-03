@@ -7,7 +7,7 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "services/*"
+    "services/functions"
   ],
   "scripts": {
     "web": "npm run dev -w @akbadna/web",
