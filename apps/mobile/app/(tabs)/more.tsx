@@ -27,6 +27,12 @@ type Tool = { icon: IconName; label: string; sub: string; href?: Href };
 
 const TOOLS: Tool[] = [
   {
+    icon: "notifications-outline",
+    label: "التنبيهات",
+    sub: "استغاثات، بطارية، سياج جغرافي",
+    href: "/tools/alerts",
+  },
+  {
     icon: "watch-outline",
     label: "اقتران ساعة KT37",
     sub: "ربط ساعة جديدة بطفلك",

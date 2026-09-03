@@ -20,6 +20,7 @@ export default function ToolsLayout() {
       <Stack.Screen name="tracking" options={{ title: "تتبع الخروج" }} />
       <Stack.Screen name="noor" options={{ title: "ربط نظام نور" }} />
       <Stack.Screen name="receiver" options={{ title: "اللوحة المباشرة" }} />
+      <Stack.Screen name="alerts" options={{ title: "التنبيهات" }} />
     </Stack>
   );
 }

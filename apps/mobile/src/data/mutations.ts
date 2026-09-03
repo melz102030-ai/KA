@@ -52,7 +52,74 @@ export const topUpWallet = (kidId: string, amountHalalas: number) =>
 export const submitAttendance = (input: CallableRequest<"submitAttendance">) =>
   run("submitAttendance", input);
 
+export const offerCarpoolTrip = (input: CallableRequest<"offerCarpoolTrip">) =>
+  run("offerCarpoolTrip", input);
+
+export const resolveAkbadnaId = (akbadnaId: string) => run("resolveAkbadnaId", { akbadnaId });
+
 export const seedDemoSchool = () => run("seedDemoSchool", {});
+
+/** Add a resolved Akbadna ID as a contact of one of the caller's kids. */
+export async function addContact(input: {
+  ownerKidId: string;
+  akbadnaId: string;
+  displayName: string;
+  relation?: string;
+}) {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+  const ref = doc(collection(db, paths.contacts()));
+  await setDoc(ref, {
+    id: ref.id,
+    ownerKidId: input.ownerKidId,
+    akbadnaId: input.akbadnaId,
+    displayName: input.displayName,
+    ...(input.relation ? { relation: input.relation } : {}),
+    status: "accepted",
+    createdBy: u,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  return ref.id;
+}
+
+/* ── Carpool requests (client-only) ────────────────────────────────────── */
+
+export async function requestCarpoolJoin(tripId: string, kidIds: string[], message?: string) {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+  const ref = doc(collection(db, paths.carpoolRequests(tripId)));
+  await setDoc(ref, {
+    id: ref.id,
+    tripId,
+    requesterUid: u,
+    kidIds,
+    status: "pending",
+    ...(message ? { message } : {}),
+    createdBy: u,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  return ref.id;
+}
+
+export async function decideCarpoolRequest(
+  tripId: string,
+  requestId: string,
+  accepted: boolean,
+  uid: string,
+) {
+  await setDoc(
+    doc(db, `${paths.carpoolRequests(tripId)}/${requestId}`),
+    {
+      status: accepted ? "accepted" : "rejected",
+      decidedAt: Date.now(),
+      decidedBy: uid,
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+}
 
 /** Clear the caller's unread counter on a thread. */
 export async function markThreadRead(threadId: string, uid: string) {

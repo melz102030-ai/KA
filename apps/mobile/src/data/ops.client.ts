@@ -9,8 +9,12 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   increment,
+  limit,
+  query,
   runTransaction,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import {
@@ -357,6 +361,50 @@ export async function submitAttendance(
   );
   await batch.commit();
   return { sessionId, counts };
+}
+
+export async function resolveAkbadnaId(
+  input: CallableRequest<"resolveAkbadnaId">,
+): Promise<CallableResponse<"resolveAkbadnaId">> {
+  uid();
+  const q = await getDocs(
+    query(collection(db, paths.kids()), where("akbadnaId", "==", input.akbadnaId), limit(1)),
+  );
+  if (q.empty) return null;
+  const kid = q.docs[0]!;
+  let schoolName: string | undefined;
+  const schoolId: string | undefined = kid.get("schoolId");
+  if (schoolId) {
+    const s = await getDoc(doc(db, paths.school(schoolId)));
+    schoolName = s.get("name") ?? undefined;
+  }
+  return { kidId: kid.id, displayName: kid.get("name"), schoolName };
+}
+
+export async function offerCarpoolTrip(
+  input: CallableRequest<"offerCarpoolTrip">,
+): Promise<CallableResponse<"offerCarpoolTrip">> {
+  const u = uid();
+  const ref = doc(collection(db, paths.carpoolTrips()));
+  await getDoc(doc(db, paths.user(u))); // touch — ensures session
+  await writeBatch(db)
+    .set(ref, {
+      id: ref.id,
+      schoolId: input.schoolId,
+      driverUid: u,
+      direction: input.direction,
+      status: "offered",
+      seatsTotal: input.seatsTotal,
+      seatsTaken: 0,
+      vehicle: input.vehicle,
+      weekDays: input.weekDays,
+      riders: [],
+      createdBy: u,
+      createdAt: ts(),
+      updatedAt: ts(),
+    })
+    .commit();
+  return { tripId: ref.id };
 }
 
 export async function seedDemoSchool(): Promise<CallableResponse<"seedDemoSchool">> {

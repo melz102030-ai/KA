@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { collection, documentId, limit, orderBy, query, where } from "firebase/firestore";
 import {
   Alert as AlertSchema,
+  CarpoolRequest,
+  CarpoolTrip,
+  Contact,
   JoinCodeDoc,
   Kid,
   Membership,
@@ -108,6 +111,34 @@ export function useAlerts(kidIds: string[]): Feed<typeof AlertSchema._type> {
     ),
   );
   return isDemo ? demoFeed([]) : real;
+}
+
+export function useCarpoolTrips(schoolId?: string): Feed<CarpoolTrip> {
+  const { isDemo } = useAuth();
+  const key = !isDemo && schoolId ? `trips:${schoolId}` : null;
+  const real = useLiveQuery(key, CarpoolTrip, () =>
+    query(
+      collection(db, paths.carpoolTrips()),
+      where("schoolId", "==", schoolId),
+      where("status", "in", ["offered", "forming", "confirmed", "active"]),
+      limit(50),
+    ),
+  );
+  return isDemo ? demoFeed([]) : real;
+}
+
+export function useCarpoolRequests(tripId?: string): Feed<CarpoolRequest> {
+  const key = tripId ? `requests:${tripId}` : null;
+  return useLiveQuery(key, CarpoolRequest, () =>
+    query(collection(db, paths.carpoolRequests(tripId!)), orderBy("createdAt", "desc"), limit(50)),
+  );
+}
+
+export function useContacts(kidId?: string): Feed<Contact> {
+  const key = kidId ? `contacts:${kidId}` : null;
+  return useLiveQuery(key, Contact, () =>
+    query(collection(db, paths.contacts()), where("ownerKidId", "==", kidId), limit(50)),
+  );
 }
 
 export function useWallet(kidId?: string): One<WalletAccount> {

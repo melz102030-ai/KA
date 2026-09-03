@@ -1,82 +1,44 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
-import { AppText, Avatar, Badge, Button, Card, Dot, Icon, ProgressBar, Screen } from "@/components";
-import { useKids } from "@/data/hooks";
+import { Alert, View } from "react-native";
+import type { CarpoolTrip } from "@akbadna/core";
+import {
+  AppText,
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Dot,
+  EmptyState,
+  Field,
+  Icon,
+  ProgressBar,
+  Screen,
+} from "@/components";
+import { useAuth } from "@/lib/auth";
+import { useCarpoolRequests, useCarpoolTrips, useKids, useMemberships } from "@/data/hooks";
+import { decideCarpoolRequest, offerCarpoolTrip, requestCarpoolJoin } from "@/data/mutations";
 import { color, space } from "@/theme";
 
-const DRIVERS = [
-  {
-    id: "P1",
-    name: "أبو خالد الدوسري",
-    car: "GMC يوكون — أسود",
-    plate: "ز ح ط 9012",
-    seats: 3,
-    rating: 5.0,
-    trips: 78,
-    distance: "0.5 كم",
-    verified: true,
-  },
-  {
-    id: "P2",
-    name: "أم سارة العتيبي",
-    car: "هونداي H1 — فضي",
-    plate: "د ه و 5678",
-    seats: 2,
-    rating: 4.8,
-    trips: 32,
-    distance: "1.2 كم",
-    verified: true,
-  },
-  {
-    id: "P3",
-    name: "أبو فيصل الشمري",
-    car: "تويوتا لاند كروزر",
-    plate: "ي ك ل 3456",
-    seats: 4,
-    rating: 4.7,
-    trips: 19,
-    distance: "2.1 كم",
-    verified: false,
-  },
-];
-
-type Step = "kids" | "list" | "request" | "active";
-type Phase = "sending" | "waiting" | "accepted";
+const DIR_LABEL: Record<string, string> = {
+  to_school: "ذهاب",
+  from_school: "إياب",
+  round_trip: "ذهاب وإياب",
+};
 
 export default function Carpool() {
+  const { isDemo } = useAuth();
+  if (isDemo) return <DemoCarpool />;
+  return <RealCarpool />;
+}
+
+/* ── Real ──────────────────────────────────────────────────────────────── */
+
+function RealCarpool() {
+  const { user } = useAuth();
   const { data: kids } = useKids();
+  const { data: memberships } = useMemberships();
+  const schoolId = kids[0]?.schoolId ?? memberships[0]?.schoolId;
   const [tab, setTab] = useState<"find" | "offer">("find");
-  const [step, setStep] = useState<Step>("kids");
-  const [sel, setSel] = useState<string[]>([]);
-  const [driverId, setDriverId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("sending");
-  const [elapsed, setElapsed] = useState(0);
-
-  const driver = DRIVERS.find((d) => d.id === driverId) ?? null;
-  const toggle = (id: string) =>
-    setSel((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const reset = () => {
-    setStep("kids");
-    setSel([]);
-    setDriverId(null);
-    setPhase("sending");
-    setElapsed(0);
-  };
-
-  useEffect(() => {
-    if (step !== "request") return;
-    setPhase("sending");
-    const a = setTimeout(() => setPhase("waiting"), 1500);
-    const b = setTimeout(() => setPhase("accepted"), 4000);
-    const c = setTimeout(() => setStep("active"), 6000);
-    return () => [a, b, c].forEach(clearTimeout);
-  }, [step]);
-
-  useEffect(() => {
-    if (step !== "active") return;
-    const t = setInterval(() => setElapsed((e) => Math.min(e + 1, 60)), 1000);
-    return () => clearInterval(t);
-  }, [step]);
 
   return (
     <Screen>
@@ -91,264 +53,209 @@ export default function Carpool() {
             key={t}
             label={label}
             variant={tab === t ? "primary" : "secondary"}
-            onPress={() => {
-              setTab(t);
-              reset();
-            }}
+            onPress={() => setTab(t)}
             style={{ flex: 1 }}
           />
         ))}
       </View>
 
-      {tab === "offer" && <Offer />}
-
-      {tab === "find" && step === "kids" && (
-        <View>
-          <AppText variant="subtitle">من تريد توصيله؟</AppText>
-          <View style={{ gap: space.sm, marginTop: space.md }}>
-            {kids.map((k) => {
-              const on = sel.includes(k.id);
-              return (
-                <Card
-                  key={k.id}
-                  onPress={() => toggle(k.id)}
-                  padding={space.md}
-                  style={
-                    on
-                      ? { borderColor: color.primary, backgroundColor: color.primarySoft }
-                      : undefined
-                  }
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                    <Avatar name={k.name} size={40} />
-                    <View style={{ flex: 1 }}>
-                      <AppText variant="subtitle">{k.name}</AppText>
-                      <AppText variant="label">{k.gradeLabel}</AppText>
-                    </View>
-                    <Icon
-                      name={on ? "checkbox" : "square-outline"}
-                      size={20}
-                      color={on ? color.primary : color.textDim}
-                    />
-                  </View>
-                </Card>
-              );
-            })}
-          </View>
-          <Button
-            label="بحث عن توصيلة"
-            icon="search-outline"
-            disabled={sel.length === 0}
-            onPress={() => setStep("list")}
-            style={{ marginTop: space.lg }}
-          />
-        </View>
-      )}
-
-      {tab === "find" && step === "list" && (
-        <View style={{ gap: space.sm }}>
-          <AppText variant="subtitle">أولياء الأمور القريبون</AppText>
-          {DRIVERS.map((d) => {
-            const active = driverId === d.id;
-            return (
-              <Card
-                key={d.id}
-                onPress={() => setDriverId(d.id)}
-                style={active ? { borderColor: color.primary } : undefined}
-              >
-                <View style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
-                  <Avatar name={d.name} size={44} tone={d.verified ? "success" : "warning"} />
-                  <View style={{ flex: 1 }}>
-                    <AppText variant="subtitle">{d.name}</AppText>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Icon name="star" size={12} color={color.warning} />
-                      <AppText variant="label">
-                        {d.rating} · {d.trips} رحلة
-                      </AppText>
-                    </View>
-                  </View>
-                  <View style={{ alignItems: "flex-end", gap: 4 }}>
-                    <AppText variant="label" color={color.primary}>
-                      {d.distance}
-                    </AppText>
-                    <Badge
-                      label={d.verified ? "موثّق" : "قيد التحقق"}
-                      tone={d.verified ? "success" : "warning"}
-                    />
-                  </View>
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: space.sm,
-                    marginTop: space.sm,
-                  }}
-                >
-                  <Icon name="car-outline" size={14} color={color.textMuted} />
-                  <AppText variant="label" style={{ flex: 1 }}>
-                    {d.car} · {d.seats} مقاعد
-                  </AppText>
-                </View>
-              </Card>
-            );
-          })}
-          <Button
-            label="طلب الانضمام"
-            disabled={!driverId}
-            onPress={() => setStep("request")}
-            style={{ marginTop: space.sm }}
-          />
-          <Button
-            label="رجوع"
-            variant="ghost"
-            icon="chevron-forward"
-            onPress={() => setStep("kids")}
-          />
-        </View>
-      )}
-
-      {tab === "find" && step === "request" && driver && (
-        <Card style={{ alignItems: "center", paddingVertical: space.xl }}>
-          <View style={styles_pulse}>
-            <Icon
-              name={
-                phase === "accepted"
-                  ? "checkmark"
-                  : phase === "waiting"
-                    ? "hourglass-outline"
-                    : "paper-plane-outline"
-              }
-              size={24}
-              color={color.primary}
-            />
-          </View>
-          <AppText variant="subtitle" style={{ marginTop: space.md }}>
-            {phase === "sending"
-              ? "جارٍ إرسال الطلب…"
-              : phase === "waiting"
-                ? `${driver.name} ينظر في الطلب…`
-                : "تم قبول الطلب"}
-          </AppText>
-          <AppText variant="label" style={{ marginTop: space.xs }}>
-            {kids
-              .filter((k) => sel.includes(k.id))
-              .map((k) => k.name.split(" ")[0])
-              .join(" و")}
-          </AppText>
-        </Card>
-      )}
-
-      {tab === "find" && step === "active" && driver && (
-        <Active driver={driver} elapsed={elapsed} onEnd={reset} />
+      {!schoolId ? (
+        <EmptyState
+          icon="school-outline"
+          title="لا توجد مدرسة مرتبطة"
+          subtitle="انضم لمدرسة برمز من إعداد ولي الأمر لعرض رحلات التوصيل."
+        />
+      ) : tab === "find" ? (
+        <FindTrips
+          schoolId={schoolId}
+          kids={kids.map((k) => ({ id: k.id, name: k.name }))}
+          uid={user?.uid}
+        />
+      ) : (
+        <OfferTrip schoolId={schoolId} uid={user?.uid} />
       )}
     </Screen>
   );
 }
 
-function Active({
-  driver,
-  elapsed,
-  onEnd,
+function FindTrips({
+  schoolId,
+  kids,
+  uid,
 }: {
-  driver: (typeof DRIVERS)[number];
-  elapsed: number;
-  onEnd: () => void;
+  schoolId: string;
+  kids: { id: string; name: string }[];
+  uid?: string;
 }) {
-  const prog = (elapsed / 60) * 100;
-  const eta = Math.max(0, 14 - Math.floor(elapsed / 4));
+  const { data: trips, loading } = useCarpoolTrips(schoolId);
+  const [tripId, setTripId] = useState<string | null>(null);
+  const [sel, setSel] = useState<string[]>([]);
+  const { data: reqs } = useCarpoolRequests(tripId ?? undefined);
+  const mine = reqs.find((r) => r.requesterUid === uid);
+
+  const toggle = (id: string) =>
+    setSel((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  const submit = async () => {
+    if (!tripId || sel.length === 0) return;
+    try {
+      await requestCarpoolJoin(tripId, sel);
+    } catch (e) {
+      Alert.alert("تعذّر", e instanceof Error ? e.message : "خطأ");
+    }
+  };
+
+  if (loading) return null;
+  if (trips.length === 0)
+    return (
+      <EmptyState
+        icon="car-outline"
+        title="لا توجد رحلات معروضة"
+        subtitle="اعرض رحلتك من التبويب الآخر."
+      />
+    );
+
   return (
-    <View style={{ gap: space.md }}>
-      <Card
-        padding={space.md}
-        style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}
-      >
-        <Dot tone="success" />
-        <AppText variant="subtitle" color={color.success}>
-          التوصيلة في الطريق
-        </AppText>
-      </Card>
+    <View style={{ gap: space.sm }}>
+      {trips.map((t) => {
+        const open = tripId === t.id;
+        return (
+          <Card
+            key={t.id}
+            onPress={() => setTripId(open ? null : t.id)}
+            style={open ? { borderColor: color.primary } : undefined}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <Avatar size={40} tone="success" />
+              <View style={{ flex: 1 }}>
+                <AppText variant="subtitle">
+                  {t.vehicle.make} · {t.vehicle.plate}
+                </AppText>
+                <AppText variant="label">
+                  {DIR_LABEL[t.direction]} · {t.seatsTotal - t.seatsTaken} مقاعد متاحة
+                </AppText>
+              </View>
+              <Icon name={open ? "chevron-up" : "chevron-down"} size={18} color={color.textDim} />
+            </View>
 
-      <Card>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: space.md,
-            marginBottom: space.md,
-          }}
-        >
-          <Avatar name={driver.name} size={44} tone="success" />
-          <View style={{ flex: 1 }}>
-            <AppText variant="subtitle">{driver.name}</AppText>
-            <AppText variant="label">{driver.car}</AppText>
-          </View>
-          <Badge label={driver.plate} tone="primary" />
-        </View>
-        <ProgressBar value={prog} tone="success" height={8} />
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-          <AppText variant="label">المنزل</AppText>
-          <AppText variant="label" color={color.primary}>
-            الوصول خلال {eta} دقيقة
-          </AppText>
-          <AppText variant="label">المدرسة</AppText>
-        </View>
-      </Card>
-
-      <View style={{ flexDirection: "row", gap: space.sm }}>
-        <Button label="اتصال" icon="call-outline" style={{ flex: 1 }} />
-        <Button
-          label="الموقع المباشر"
-          variant="secondary"
-          icon="location-outline"
-          style={{ flex: 1 }}
-        />
-      </View>
-
-      {eta === 0 && <Button label="وصل الأطفال بأمان — إغلاق" onPress={onEnd} />}
+            {open && (
+              <View style={{ marginTop: space.md, gap: space.sm }}>
+                {mine ? (
+                  <Badge
+                    label={
+                      mine.status === "pending"
+                        ? "طلبك قيد المراجعة"
+                        : mine.status === "accepted"
+                          ? "تم قبول طلبك"
+                          : "لم يُقبل الطلب"
+                    }
+                    tone={
+                      mine.status === "accepted"
+                        ? "success"
+                        : mine.status === "pending"
+                          ? "warning"
+                          : "danger"
+                    }
+                  />
+                ) : (
+                  <>
+                    <AppText variant="label">اختر الأبناء:</AppText>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+                      {kids.map((k) => (
+                        <Button
+                          key={k.id}
+                          label={k.name.split(" ")[0] ?? ""}
+                          size="sm"
+                          variant={sel.includes(k.id) ? "primary" : "secondary"}
+                          onPress={() => toggle(k.id)}
+                        />
+                      ))}
+                    </View>
+                    <Button label="طلب الانضمام" disabled={sel.length === 0} onPress={submit} />
+                  </>
+                )}
+              </View>
+            )}
+          </Card>
+        );
+      })}
     </View>
   );
 }
 
-function Offer() {
-  const [seats, setSeats] = useState(2);
-  const [dir, setDir] = useState<"both" | "go" | "back">("both");
-  const [posted, setPosted] = useState(false);
+function OfferTrip({ schoolId, uid }: { schoolId: string; uid?: string }) {
+  const { data: trips } = useCarpoolTrips(schoolId);
+  const myTrip = trips.find((t) => t.driverUid === uid);
+  const { data: reqs } = useCarpoolRequests(myTrip?.id);
 
-  if (posted) {
+  const [make, setMake] = useState("");
+  const [plate, setPlate] = useState("");
+  const [seats, setSeats] = useState(2);
+  const [dir, setDir] = useState<CarpoolTrip["direction"]>("round_trip");
+  const [busy, setBusy] = useState(false);
+
+  const post = async () => {
+    setBusy(true);
+    try {
+      await offerCarpoolTrip({
+        schoolId,
+        direction: dir,
+        seatsTotal: seats,
+        weekDays: [0, 1, 2, 3, 4],
+        vehicle: { make: make.trim() || "سيارة", colour: "-", plate: plate.trim() || "-" },
+      });
+    } catch (e) {
+      Alert.alert("تعذّر", e instanceof Error ? e.message : "خطأ");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (myTrip) {
     return (
       <View style={{ gap: space.md }}>
-        <Card style={{ alignItems: "center", paddingVertical: space.xl }}>
-          <View style={styles_pulse}>
-            <Icon name="checkmark" size={24} color={color.primary} />
-          </View>
-          <AppText variant="subtitle" style={{ marginTop: space.md }}>
-            تم نشر رحلتك
-          </AppText>
-          <AppText variant="label">يمكن لأولياء الأمور المجاورين طلب الانضمام</AppText>
-        </Card>
         <Card>
-          <AppText variant="subtitle">طلب انضمام جديد</AppText>
-          <AppText variant="label" style={{ marginVertical: space.sm }}>
-            أبو عمر القحطاني · 0.9 كم · موثّق — عمر (ثالث متوسط)
+          <AppText variant="subtitle">رحلتك منشورة</AppText>
+          <AppText variant="label" style={{ marginTop: 4 }}>
+            {myTrip.vehicle.make} · {myTrip.vehicle.plate} · {DIR_LABEL[myTrip.direction]}
           </AppText>
-          <View style={{ flexDirection: "row", gap: space.sm }}>
-            <Button label="رفض" variant="danger" style={{ flex: 1 }} />
-            <Button label="قبول" style={{ flex: 2 }} />
-          </View>
         </Card>
-        <Button label="إلغاء نشر الرحلة" variant="secondary" onPress={() => setPosted(false)} />
+        <AppText variant="label">طلبات الانضمام ({reqs.length})</AppText>
+        {reqs.length === 0 && <EmptyState icon="mail-outline" title="لا طلبات بعد" />}
+        {reqs.map((r) => (
+          <Card key={r.id} padding={space.md}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <Avatar size={36} />
+              <AppText variant="subtitle" style={{ flex: 1 }}>
+                {r.kidIds.length} طفل · {r.status === "pending" ? "بانتظار قرارك" : r.status}
+              </AppText>
+            </View>
+            {r.status === "pending" && (
+              <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.sm }}>
+                <Button
+                  label="رفض"
+                  variant="danger"
+                  style={{ flex: 1 }}
+                  onPress={() => uid && decideCarpoolRequest(myTrip.id, r.id, false, uid)}
+                />
+                <Button
+                  label="قبول"
+                  style={{ flex: 2 }}
+                  onPress={() => uid && decideCarpoolRequest(myTrip.id, r.id, true, uid)}
+                />
+              </View>
+            )}
+          </Card>
+        ))}
       </View>
     );
   }
 
   return (
-    <View>
-      <AppText variant="subtitle">تفاصيل رحلتك</AppText>
-
-      <AppText variant="label" style={{ marginTop: space.md, marginBottom: space.sm }}>
-        المقاعد المتاحة
-      </AppText>
+    <View style={{ gap: space.md }}>
+      <Field label="السيارة" value={make} onChangeText={setMake} placeholder="مثال: تويوتا كامري" />
+      <Field label="اللوحة" value={plate} onChangeText={setPlate} placeholder="أ ب ج 1234" />
+      <AppText variant="label">المقاعد المتاحة</AppText>
       <View style={{ flexDirection: "row", gap: space.sm }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <Button
@@ -361,55 +268,174 @@ function Offer() {
           />
         ))}
       </View>
-
-      <AppText variant="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>
-        اتجاه الرحلة
-      </AppText>
+      <AppText variant="label">الاتجاه</AppText>
       <View style={{ gap: space.sm }}>
-        {(
-          [
-            ["both", "ذهاب وإياب"],
-            ["go", "ذهاب فقط"],
-            ["back", "إياب فقط"],
-          ] as const
-        ).map(([id, label]) => (
-          <Card
-            key={id}
-            onPress={() => setDir(id)}
-            padding={space.md}
-            style={
-              dir === id
-                ? { borderColor: color.primary, backgroundColor: color.primarySoft }
-                : undefined
-            }
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-              <Icon
-                name={dir === id ? "radio-button-on" : "radio-button-off"}
-                size={18}
-                color={dir === id ? color.primary : color.textDim}
-              />
-              <AppText variant="subtitle">{label}</AppText>
-            </View>
-          </Card>
+        {(["round_trip", "to_school", "from_school"] as const).map((d) => (
+          <Button
+            key={d}
+            label={DIR_LABEL[d]!}
+            variant={dir === d ? "primary" : "secondary"}
+            onPress={() => setDir(d)}
+          />
         ))}
       </View>
-
-      <Button
-        label="نشر الرحلة"
-        icon="megaphone-outline"
-        onPress={() => setPosted(true)}
-        style={{ marginTop: space.lg }}
-      />
+      <Button label="نشر الرحلة" icon="megaphone-outline" loading={busy} onPress={post} />
     </View>
   );
 }
 
-const styles_pulse = {
-  width: 52,
-  height: 52,
-  borderRadius: 26,
-  backgroundColor: color.primarySoft,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-};
+/* ── Demo (offline preview, unchanged sim) ────────────────────────────── */
+
+const DEMO_DRIVERS = [
+  {
+    id: "P1",
+    name: "أبو خالد الدوسري",
+    car: "GMC يوكون",
+    plate: "ز ح ط 9012",
+    seats: 3,
+    verified: true,
+  },
+  {
+    id: "P2",
+    name: "أم سارة العتيبي",
+    car: "هونداي H1",
+    plate: "د ه و 5678",
+    seats: 2,
+    verified: true,
+  },
+  {
+    id: "P3",
+    name: "أبو فيصل الشمري",
+    car: "لاند كروزر",
+    plate: "ي ك ل 3456",
+    seats: 4,
+    verified: false,
+  },
+];
+
+function DemoCarpool() {
+  const { data: kids } = useKids();
+  const [step, setStep] = useState<"kids" | "list" | "request" | "active">("kids");
+  const [sel, setSel] = useState<string[]>([]);
+  const [driverId, setDriverId] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"sending" | "waiting" | "accepted">("sending");
+  const [elapsed, setElapsed] = useState(0);
+  const driver = DEMO_DRIVERS.find((d) => d.id === driverId);
+  const toggle = (id: string) =>
+    setSel((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  useEffect(() => {
+    if (step !== "request") return;
+    const a = setTimeout(() => setPhase("waiting"), 1500);
+    const b = setTimeout(() => setPhase("accepted"), 4000);
+    const c = setTimeout(() => setStep("active"), 6000);
+    return () => [a, b, c].forEach(clearTimeout);
+  }, [step]);
+  useEffect(() => {
+    if (step !== "active") return;
+    const t = setInterval(() => setElapsed((e) => Math.min(e + 1, 60)), 1000);
+    return () => clearInterval(t);
+  }, [step]);
+
+  return (
+    <Screen>
+      <Badge label="وضع تجريبي" tone="neutral" />
+      {step === "kids" && (
+        <View style={{ marginTop: space.md }}>
+          <AppText variant="subtitle">من تريد توصيله؟</AppText>
+          <View style={{ gap: space.sm, marginTop: space.md }}>
+            {kids.map((k) => (
+              <Card
+                key={k.id}
+                onPress={() => toggle(k.id)}
+                padding={space.md}
+                style={sel.includes(k.id) ? { borderColor: color.primary } : undefined}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                  <Avatar size={40} />
+                  <AppText variant="subtitle" style={{ flex: 1 }}>
+                    {k.name}
+                  </AppText>
+                  <Icon
+                    name={sel.includes(k.id) ? "checkbox" : "square-outline"}
+                    size={20}
+                    color={sel.includes(k.id) ? color.primary : color.textDim}
+                  />
+                </View>
+              </Card>
+            ))}
+          </View>
+          <Button
+            label="بحث"
+            icon="search-outline"
+            disabled={sel.length === 0}
+            onPress={() => setStep("list")}
+            style={{ marginTop: space.lg }}
+          />
+        </View>
+      )}
+      {step === "list" && (
+        <View style={{ gap: space.sm, marginTop: space.md }}>
+          {DEMO_DRIVERS.map((d) => (
+            <Card
+              key={d.id}
+              onPress={() => setDriverId(d.id)}
+              style={driverId === d.id ? { borderColor: color.primary } : undefined}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                <Avatar size={44} tone={d.verified ? "success" : "warning"} />
+                <View style={{ flex: 1 }}>
+                  <AppText variant="subtitle">{d.name}</AppText>
+                  <AppText variant="label">
+                    {d.car} · {d.seats} مقاعد
+                  </AppText>
+                </View>
+                <Badge
+                  label={d.verified ? "موثّق" : "قيد التحقق"}
+                  tone={d.verified ? "success" : "warning"}
+                />
+              </View>
+            </Card>
+          ))}
+          <Button label="طلب الانضمام" disabled={!driverId} onPress={() => setStep("request")} />
+        </View>
+      )}
+      {step === "request" && driver && (
+        <Card style={{ alignItems: "center", paddingVertical: space.xl, marginTop: space.md }}>
+          <Icon
+            name={phase === "accepted" ? "checkmark-circle" : "hourglass-outline"}
+            size={28}
+            color={color.primary}
+          />
+          <AppText variant="subtitle" style={{ marginTop: space.md }}>
+            {phase === "sending"
+              ? "جارٍ الإرسال…"
+              : phase === "waiting"
+                ? `${driver.name} ينظر في الطلب…`
+                : "تم القبول"}
+          </AppText>
+        </Card>
+      )}
+      {step === "active" && driver && (
+        <View style={{ gap: space.md, marginTop: space.md }}>
+          <Card
+            padding={space.md}
+            style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}
+          >
+            <Dot tone="success" />
+            <AppText variant="subtitle" color={color.success}>
+              التوصيلة في الطريق
+            </AppText>
+          </Card>
+          <Card>
+            <AppText variant="subtitle">{driver.name}</AppText>
+            <AppText variant="label" style={{ marginBottom: space.sm }}>
+              {driver.car} · {driver.plate}
+            </AppText>
+            <ProgressBar value={(elapsed / 60) * 100} tone="success" height={8} />
+          </Card>
+        </View>
+      )}
+    </Screen>
+  );
+}

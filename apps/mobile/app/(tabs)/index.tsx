@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import type { Kid } from "@akbadna/core";
 import {
   AppText,
@@ -13,8 +13,9 @@ import {
   SectionHeader,
   StatCard,
 } from "@/components";
+import { router } from "expo-router";
 import { useAuth } from "@/lib/auth";
-import { useClass, useKids, useSchedule } from "@/data/hooks";
+import { useAlerts, useClass, useKids, useSchedule } from "@/data/hooks";
 import { raiseKidSos } from "@/data/mutations";
 import {
   currentPeriod,
@@ -45,6 +46,7 @@ export default function Home() {
   const first = kids[0];
   const { data: cls } = useClass(first?.schoolId, first?.classId);
   const schedule = useSchedule(cls);
+  const { data: alerts } = useAlerts(kids.map((k) => k.id));
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -82,9 +84,16 @@ export default function Home() {
           <AppText variant="label">مرحبًا</AppText>
           <AppText variant="title">{profile?.displayName ?? "أكبادنا"}</AppText>
         </View>
-        <View style={styles_bell}>
+        <Pressable style={styles_bell} onPress={() => router.push("/tools/alerts")}>
           <Icon name="notifications-outline" size={20} color={color.text} />
-        </View>
+          {alerts.length > 0 && (
+            <View style={styles_dot}>
+              <AppText style={{ color: "#fff", fontSize: 10, fontFamily: font.family.bold }}>
+                {alerts.length}
+              </AppText>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       {isDemo && (
@@ -243,6 +252,18 @@ const styles_bell = {
   backgroundColor: color.surface,
   borderWidth: 1,
   borderColor: color.border,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+};
+const styles_dot = {
+  position: "absolute" as const,
+  top: -3,
+  left: -3,
+  minWidth: 18,
+  height: 18,
+  paddingHorizontal: 4,
+  borderRadius: 9,
+  backgroundColor: color.danger,
   alignItems: "center" as const,
   justifyContent: "center" as const,
 };
