@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install",
+  "installCommand": "npm install --include-workspace-root -w @akbadna/core -w @akbadna/web",
   "buildCommand": "npm run core:build && npm run build -w @akbadna/web",
   "outputDirectory": "apps/web/dist",
   "framework": null,

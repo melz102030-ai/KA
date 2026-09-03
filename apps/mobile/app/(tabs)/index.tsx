@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
+import type { Kid } from "@akbadna/core";
 import {
   AppText,
   Avatar,
@@ -14,6 +15,7 @@ import {
 } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { useKids } from "@/data/hooks";
+import { call } from "@/lib/functions";
 import { DEMO_SCHEDULE } from "@/data/demo";
 import {
   currentPeriod,
@@ -35,6 +37,32 @@ export default function Home() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const ping = (k: Kid) =>
+    Alert.alert("📳 نداء", `تم إرسال نداء إلى ساعة ${k.name.split(" ")[0]} — ستهتز الآن.`);
+
+  const locate = (k: Kid) =>
+    Alert.alert(
+      "📍 الموقع",
+      k.live.location ? `آخر موقع معروف لـ ${k.name.split(" ")[0]}.` : "لا يوجد موقع محدث بعد.",
+    );
+
+  const sos = async (k: Kid) => {
+    if (!k.watchId || !k.live.location) {
+      Alert.alert("🆘 SOS", "لا توجد ساعة مرتبطة بموقع حالي لهذا الطفل.");
+      return;
+    }
+    try {
+      await call("raiseSos", {
+        watchId: k.watchId,
+        lat: k.live.location.lat,
+        lng: k.live.location.lng,
+      });
+      Alert.alert("🆘 SOS", "تم رفع تنبيه الاستغاثة وإشعار الجهات.");
+    } catch {
+      Alert.alert("🆘 SOS", "تعذّر الاتصال بالخادم.");
+    }
+  };
 
   const cur = currentPeriod(DEMO_SCHEDULE, now);
   const next = nextPeriod(DEMO_SCHEDULE, now);
@@ -210,6 +238,7 @@ export default function Home() {
                   size="sm"
                   variant="outline"
                   accent={color.teal}
+                  onPress={() => ping(k)}
                   style={{ flex: 1 }}
                 />
                 <Button
@@ -217,6 +246,7 @@ export default function Home() {
                   size="sm"
                   variant="outline"
                   accent={color.yellow}
+                  onPress={() => locate(k)}
                   style={{ flex: 1 }}
                 />
                 <Button
@@ -224,6 +254,7 @@ export default function Home() {
                   size="sm"
                   variant="outline"
                   accent={color.red}
+                  onPress={() => sos(k)}
                   style={{ flex: 1 }}
                 />
               </View>

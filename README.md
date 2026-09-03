@@ -7,56 +7,63 @@
 
 ```
 apps/
-  web/              تطبيق الويب الحالي — نموذج مرجعي يعمل بـ Vite + React + Firebase
-  mobile/           (قادم) Expo — React Native + Web → iOS + Android + PWA من كود واحد
-  watch/            (قادم) تطبيق Android/Kotlin لساعة KT37 (APK جانبي)
+  web/              تطبيق الويب — نموذج مرجعي (Vite + React + Firebase)، منشور على Vercel
+  mobile/           Expo — React Native + Web → iOS + Android + PWA من كود واحد
+  watch/            تطبيق Android/Kotlin لساعة KT37 (APK جانبي) — هيكل جاهز
 services/
-  functions/        (قادم) Firebase Cloud Functions (TypeScript) — منطق الأعمال
-  ingest/           (اختياري لاحقًا) جسر بروتوكول GT06/JT808 لسيراكر
+  functions/        Firebase Cloud Functions (TypeScript) — منطق الأعمال
 packages/
-  core/             العمود الفقري: مخطط Firestore + أنواع TypeScript + تحقق zod + مواصفات الساعة
-  watch-protocol/   (قادم) عقد الساعة: أوامر SMS، حمولة telemetry، واجهة WatchGateway
+  core/             العمود الفقري: مخطط Firestore + أنواع TypeScript + تحقق zod + مواصفات الساعة + WatchGateway
 ```
 
 الجذر يدير الحزم عبر **npm workspaces**. لغة المشروع **TypeScript** في كل مكان.
+النشر: `DEPLOYMENT.md`.
 
 ## الحزمة الأساسية `@akbadna/core`
 
 مصدر الحقيقة الوحيد للنموذج — يستهلكه الويب والموبايل و Functions وقواعد الأمان:
 
-| ملف             | المحتوى                                                                                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `enums.ts`      | الأدوار، حالات الحضور، أنواع الرسائل والتنبيهات، دورة حياة الرحلات والطلبات                                                                                              |
-| `common.ts`     | الوقت، الإحداثيات، الجوال السعودي، الهوية، IMEI، **معرّف أكبادنا** + مولّده، المبالغ                                                                                     |
-| `schema/*.ts`   | كل مجموعات Firestore: المستخدمون، المدارس والفصول، الأبناء، الساعات و`telemetry`، الحضور والمكافآت، الرسائل، الكاربول، المحفظة، السياج الجغرافي والتنبيهات وجهات الاتصال |
-| `paths.ts`      | مسارات مستندات Firestore (تُبقي العميل و Functions والقواعد متطابقة)                                                                                                     |
-| `callables.ts`  | عقود دوال Cloud Functions (طلب/رد بـ zod)                                                                                                                                |
-| `watch/kt37.ts` | مواصفات KT37، توافق شبكات السعودية، كتالوج أوامر SMS                                                                                                                     |
-
-بناء الحزمة: `npm run core:build`
-
-## Firebase
-
-المشروع: `kasa-dcabd`. الإعداد في `apps/web/src/firebase.js`.
-مطلوب في وحدة التحكم: تفعيل **Anonymous Auth**، إنشاء **Firestore**، نشر `firestore.rules`.
+| ملف                | المحتوى                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `enums.ts`         | الأدوار، حالات الحضور، أنواع الرسائل والتنبيهات، دورة حياة الرحلات والطلبات والاقتران                                              |
+| `common.ts`        | الوقت، الإحداثيات، الجوال السعودي، الهوية، IMEI، **معرّف أكبادنا** + مولّده، المبالغ                                               |
+| `schema/*.ts`      | كل مجموعات Firestore (users, schools/classes, kids, watches + telemetry, attendance + rewards, messaging, carpool, wallet, safety) |
+| `paths.ts`         | مسارات مستندات Firestore (تُبقي العميل و Functions والقواعد متطابقة)                                                               |
+| `callables.ts`     | عقود دوال Cloud Functions (طلب/رد بـ zod)                                                                                          |
+| `watch/kt37.ts`    | مواصفات KT37، توافق شبكات السعودية، كتالوج أوامر SMS                                                                               |
+| `watch/gateway.ts` | `WatchGateway` — تجريد نقل الأوامر/التتبع (apk / sms / setracker)                                                                  |
 
 ## التشغيل
 
 ```bash
-npm install            # تثبيت كل الحزم
-npm run core:build     # بناء الأنواع المشتركة
-npm run web            # تطبيق الويب على http://localhost:5173
+npm install
+npm run core:build      # ابنِ الأنواع المشتركة أولاً
+npm run web             # تطبيق الويب     → http://localhost:5173
+npm run mobile          # تطبيق Expo      → اضغط w / i / a
+npm test                # اختبارات @akbadna/core (Vitest)
 npm run lint
-npm run format
+npm run typecheck
 ```
+
+## Firebase
+
+المشروع: `kasa-dcabd`. مطلوب في وحدة التحكم قبل التشغيل الكامل:
+
+1. **Authentication** → فعّل مزوّد **Anonymous** (ولاحقًا Phone).
+2. **Firestore Database** → أنشئ القاعدة.
+3. رقّ المشروع إلى خطة **Blaze** (لازمة لـ Functions).
+4. `firebase deploy --only firestore:rules,firestore:indexes,functions`
 
 ## خارطة الطريق
 
-- [x] نموذج واجهة كامل (apps/web)
-- [x] ربط Firebase أولي (Auth مجهول + Firestore حيّ لبعض البيانات)
-- [x] `@akbadna/core` — النموذج الكامل بـ TypeScript
-- [ ] `apps/mobile` — Expo، تحويل الشاشات لنظام مكوّنات RN
-- [ ] `services/functions` — الحضور، التنبيهات، SOS، الكاربول، اقتران الساعة
-- [ ] `apps/watch` — APK لساعة KT37 (الحساسات + الموقع + الرفع)
-- [ ] دخول برقم الجوال (OTP)، ثم واجهة نفاذ/نور لاحقًا
-- [ ] اختبارات (Vitest) + CI (GitHub Actions) + نشر (Firebase Hosting + متاجر التطبيقات)
+- [x] نموذج واجهة كامل (`apps/web`)
+- [x] `@akbadna/core` — النموذج الكامل بـ TypeScript + 29 اختبار
+- [x] `services/functions` — الحضور، خط أنابيب telemetry، التنبيهات، SOS، الاقتران
+- [x] `apps/mobile` — Expo، نظام مكوّنات RN، 5 تبويبات، دخول، يبني للويب
+- [x] `apps/watch` — هيكل APK لساعة KT37 (حساسات + موقع + رفع + اقتران + SOS)
+- [x] CI (GitHub Actions) + نشر الويب (Vercel)
+- [ ] دخول برقم الجوال (OTP) على الأجهزة عبر Dev Build
+- [ ] بناء الموبايل عبر EAS ونشره على المتاجر
+- [ ] بناء APK الساعة واختباره على جهاز KT37 حقيقي
+- [ ] تكامل نفاذ ونور الرسمي
+- [ ] بقية الشاشات (كاربول كامل، المحفظة، نظام نور، اللوحة المباشرة، تتبع الخروج)

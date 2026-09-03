@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import type { Role } from "@akbadna/core";
 import { AppText, Button, Card, Screen, SectionTitle } from "@/components";
 import { useAuth } from "@/lib/auth";
@@ -11,12 +11,38 @@ const ROLES: { id: Role; label: string; emoji: string }[] = [
   { id: "student", label: "طالب", emoji: "👦" },
 ];
 
-const TOOLS = [
-  { icon: "🆔", label: "معرّف أكبادنا", sub: "ربط الساعة بأي شخص بالمعرّف", tint: color.purple },
-  { icon: "📅", label: "جدول الحصص", sub: "عرض جدول اليوم كاملاً", tint: color.blue },
+type Tool = { icon: string; label: string; sub: string; tint: string; href?: Href };
+
+const TOOLS: Tool[] = [
+  {
+    icon: "🆔",
+    label: "معرّف أكبادنا",
+    sub: "ربط الساعة بأي شخص بالمعرّف",
+    tint: color.purple,
+    href: "/tools/akbid",
+  },
+  {
+    icon: "📅",
+    label: "جدول الحصص",
+    sub: "عرض جدول اليوم كاملاً",
+    tint: color.blue,
+    href: "/tools/schedule",
+  },
+  {
+    icon: "❤️",
+    label: "الصحة والحيويات",
+    sub: "نبض، حرارة، نشاط",
+    tint: color.red,
+    href: "/tools/health",
+  },
+  {
+    icon: "💰",
+    label: "المحفظة المدرسية",
+    sub: "الرصيد، الشحن، السجل",
+    tint: color.yellow,
+    href: "/tools/wallet",
+  },
   { icon: "🗺️", label: "تتبع الخروج", sub: "توجيه الطالب لموقع الانتظار", tint: color.teal },
-  { icon: "❤️", label: "الصحة والحيويات", sub: "نبض، حرارة، نشاط", tint: color.red },
-  { icon: "💰", label: "المحفظة المدرسية", sub: "الرصيد، الشحن، السجل", tint: color.yellow },
   { icon: "🏫", label: "ربط نظام نور", sub: "جلب بيانات الطالب من الوزارة", tint: "#1A5276" },
   { icon: "📡", label: "اللوحة المباشرة", sub: "تتبع كل الساعات — للمدرسة", tint: color.purple },
 ];
@@ -56,7 +82,11 @@ export default function More() {
       <SectionTitle>الأدوات</SectionTitle>
       <View style={{ gap: space.sm }}>
         {TOOLS.map((t) => (
-          <Card key={t.label} style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+          <Card
+            key={t.label}
+            onPress={t.href ? () => router.push(t.href!) : undefined}
+            style={{ flexDirection: "row", alignItems: "center", gap: space.md }}
+          >
             <View
               style={{
                 width: 44,
@@ -74,7 +104,7 @@ export default function More() {
               <AppText variant="label">{t.sub}</AppText>
             </View>
             <AppText variant="label" color={color.textDim}>
-              قريبًا
+              {t.href ? "‹" : "قريبًا"}
             </AppText>
           </Card>
         ))}

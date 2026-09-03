@@ -85,24 +85,31 @@ export function Card({
   accent,
   glow,
   style,
+  onPress,
 }: {
   children: ReactNode;
   accent?: string;
   glow?: boolean;
   style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
 }) {
-  return (
-    <View
-      style={[
-        styles.card,
-        accent ? { backgroundColor: alpha(accent, 0.09), borderColor: alpha(accent, 0.25) } : null,
-        glow && accent ? { shadowColor: accent, shadowOpacity: 0.35, shadowRadius: 16 } : null,
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+  const cardStyle = [
+    styles.card,
+    accent ? { backgroundColor: alpha(accent, 0.09), borderColor: alpha(accent, 0.25) } : null,
+    glow && accent ? { shadowColor: accent, shadowOpacity: 0.35, shadowRadius: 16 } : null,
+    style,
+  ];
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [...cardStyle, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+  return <View style={cardStyle}>{children}</View>;
 }
 
 /* ── Button ────────────────────────────────────────────────────────────── */
