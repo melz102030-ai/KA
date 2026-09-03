@@ -1,18 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
-import type { AttendanceStatus } from "@akbadna/core";
-import { AppText, Avatar, Button, Card, Icon, Screen } from "@/components";
+import type { AttendanceStatus, Kid } from "@akbadna/core";
+import { AppText, Avatar, Button, Card, EmptyState, Screen } from "@/components";
 import { useAuth } from "@/lib/auth";
+import { useClass, useMemberships, useRoster } from "@/data/hooks";
+import { submitAttendance } from "@/data/mutations";
 import { alpha, color, radius, space } from "@/theme";
-
-const ROSTER = [
-  { id: "s1", name: "أحمد محمد الغامدي", points: 145 },
-  { id: "s2", name: "سارة عبدالله العتيبي", points: 198 },
-  { id: "s3", name: "خالد سعد الدوسري", points: 112 },
-  { id: "s4", name: "نورة فهد الشمري", points: 167 },
-  { id: "s5", name: "عمر ناصر القحطاني", points: 89 },
-  { id: "s6", name: "لينا فيصل الزهراني", points: 201 },
-];
 
 const OPTIONS: { s: AttendanceStatus; label: string; tone: string }[] = [
   { s: "present", label: "حاضر", tone: color.success },
@@ -20,9 +13,28 @@ const OPTIONS: { s: AttendanceStatus; label: string; tone: string }[] = [
   { s: "absent", label: "غائب", tone: color.danger },
 ];
 
+const DEMO_ROSTER = [
+  { id: "s1", name: "أحمد محمد الغامدي" },
+  { id: "s2", name: "سارة عبدالله العتيبي" },
+  { id: "s3", name: "خالد سعد الدوسري" },
+  { id: "s4", name: "نورة فهد الشمري" },
+  { id: "s5", name: "عمر ناصر القحطاني" },
+  { id: "s6", name: "لينا فيصل الزهراني" },
+];
+
 export default function Attendance() {
   const { isDemo } = useAuth();
-  const [subTab, setSubTab] = useState<"roll" | "board">("roll");
+  const { data: memberships } = useMemberships();
+  const teach = memberships.find((m) => m.role === "teacher" && m.classIds.length);
+  const schoolId = teach?.schoolId;
+  const classId = teach?.classIds[0];
+  const { data: cls } = useClass(schoolId, classId);
+  const { data: rosterKids } = useRoster(cls?.studentIds ?? []);
+
+  const roster: { id: string; name: string }[] = isDemo
+    ? DEMO_ROSTER
+    : rosterKids.map((k: Kid) => ({ id: k.id, name: k.name }));
+
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>({});
   const [saving, setSaving] = useState(false);
 
@@ -31,29 +43,39 @@ export default function Attendance() {
     {} as Record<AttendanceStatus, number>,
   );
   const marked = Object.keys(marks).length;
-  const board = useMemo(() => [...ROSTER].sort((a, b) => b.points - a.points), []);
 
   const scanAll = () => {
     const next: Record<string, AttendanceStatus> = {};
-    ROSTER.forEach((s) => (next[s.id] = "present"));
+    roster.forEach((s) => (next[s.id] = "present"));
     setMarks(next);
   };
 
   const submit = async () => {
     setSaving(true);
     try {
-      await new Promise((r) => setTimeout(r, 700));
+      if (!isDemo && schoolId && classId) {
+        await submitAttendance({
+          schoolId,
+          classId,
+          date: new Date().toISOString().slice(0, 10),
+          marks: Object.entries(marks).map(([kidId, status]) => ({ kidId, status })),
+        });
+      }
       Alert.alert(
         "تم تسجيل الحضور",
         `حاضر ${counts.present} · متأخر ${counts.late} · غائب ${counts.absent}${
-          isDemo ? "\n(وضع تجريبي — لم يُرسل للخادم)" : ""
+          isDemo || !schoolId ? "\n(وضع تجريبي — لم يُرسل للخادم)" : ""
         }`,
       );
       setMarks({});
+    } catch (e) {
+      Alert.alert("تعذّر الحفظ", e instanceof Error ? e.message : "خطأ");
     } finally {
       setSaving(false);
     }
   };
+
+  const title = isDemo ? "الأول المتوسط — أ" : (cls?.name ?? "لا يوجد فصل");
 
   return (
     <Screen>
@@ -61,51 +83,18 @@ export default function Attendance() {
         الحضور
       </AppText>
       <AppText variant="label" style={{ marginBottom: space.md }}>
-        الأول المتوسط — أ · {ROSTER.length} طلاب
+        {title} · {roster.length} طلاب
       </AppText>
 
-      <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.md }}>
-        {(
-          [
-            ["roll", "الكشف"],
-            ["board", "المتصدّرون"],
-          ] as const
-        ).map(([id, label]) => (
-          <Button
-            key={id}
-            label={label}
-            variant={subTab === id ? "primary" : "secondary"}
-            onPress={() => setSubTab(id)}
-            style={{ flex: 1 }}
-          />
-        ))}
-      </View>
-
-      {subTab === "board" && (
-        <View style={{ gap: space.sm }}>
-          {board.map((s, i) => (
-            <Card key={s.id} padding={space.md}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                <AppText variant="mono" color={color.textMuted} style={{ width: 22 }}>
-                  {i + 1}
-                </AppText>
-                <Avatar name={s.name} size={36} />
-                <AppText variant="subtitle" style={{ flex: 1 }}>
-                  {s.name.split(" ").slice(0, 2).join(" ")}
-                </AppText>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="star" size={13} color={color.warning} />
-                  <AppText variant="subtitle" color={color.text}>
-                    {s.points}
-                  </AppText>
-                </View>
-              </View>
-            </Card>
-          ))}
-        </View>
+      {!isDemo && !classId && (
+        <EmptyState
+          icon="school-outline"
+          title="لا يوجد فصل مرتبط"
+          subtitle="أنشئ مدرسة وفصلًا من إعداد المعلم لبدء تسجيل الحضور."
+        />
       )}
 
-      {subTab === "roll" && (
+      {roster.length > 0 && (
         <>
           <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.md }}>
             {OPTIONS.map((o) => (
@@ -127,7 +116,7 @@ export default function Attendance() {
           />
 
           <View style={{ gap: space.sm }}>
-            {ROSTER.map((st) => (
+            {roster.map((st) => (
               <Card key={st.id} padding={space.md}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
                   <Avatar name={st.name} size={38} />
@@ -168,7 +157,7 @@ export default function Attendance() {
           </View>
 
           <Button
-            label={`تسجيل الحضور (${marked}/${ROSTER.length})`}
+            label={`تسجيل الحضور (${marked}/${roster.length})`}
             icon="checkmark-done-outline"
             loading={saving}
             disabled={marked === 0}

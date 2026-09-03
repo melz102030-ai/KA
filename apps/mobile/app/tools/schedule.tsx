@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { AppText, Badge, Icon, type IconName, Screen } from "@/components";
-import { DEMO_SCHEDULE } from "@/data/demo";
+import { useClass, useKids, useSchedule } from "@/data/hooks";
 import { clockToMinutes, minutesOfDay } from "@/lib/time";
 import { color, space } from "@/theme";
 
@@ -13,6 +13,10 @@ const KIND: Record<string, { icon: IconName; label: string }> = {
 };
 
 export default function ScheduleScreen() {
+  const { data: kids } = useKids();
+  const first = kids[0];
+  const { data: cls } = useClass(first?.schoolId, first?.classId);
+  const periods = useSchedule(cls);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -23,7 +27,7 @@ export default function ScheduleScreen() {
   return (
     <Screen>
       <View style={{ paddingTop: space.md }}>
-        {DEMO_SCHEDULE.map((p, i) => {
+        {periods.map((p, i) => {
           const active = m >= clockToMinutes(p.start) && m < clockToMinutes(p.end);
           const done = clockToMinutes(p.end) <= m;
           const k = KIND[p.kind] ?? KIND.lesson!;
@@ -45,7 +49,7 @@ export default function ScheduleScreen() {
                     borderColor: active ? color.primary : color.borderStrong,
                   }}
                 />
-                {i < DEMO_SCHEDULE.length - 1 && (
+                {i < periods.length - 1 && (
                   <View style={{ flex: 1, width: 2, backgroundColor: color.border }} />
                 )}
               </View>

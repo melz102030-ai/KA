@@ -14,9 +14,8 @@ import {
   StatCard,
 } from "@/components";
 import { useAuth } from "@/lib/auth";
-import { useKids } from "@/data/hooks";
+import { useClass, useKids, useSchedule } from "@/data/hooks";
 import { call } from "@/lib/functions";
-import { DEMO_SCHEDULE } from "@/data/demo";
 import {
   currentPeriod,
   fmtDate,
@@ -43,6 +42,9 @@ const PRESENCE: Record<
 export default function Home() {
   const { profile, isDemo } = useAuth();
   const { data: kids } = useKids();
+  const first = kids[0];
+  const { data: cls } = useClass(first?.schoolId, first?.classId);
+  const schedule = useSchedule(cls);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -50,8 +52,8 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
-  const cur = currentPeriod(DEMO_SCHEDULE, now);
-  const next = nextPeriod(DEMO_SCHEDULE, now);
+  const cur = currentPeriod(schedule, now);
+  const next = nextPeriod(schedule, now);
   const mins = now.getHours() * 60 + now.getMinutes();
   const minsToNext = next ? Math.max(0, toMins(next.start) - mins) : null;
 

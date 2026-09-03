@@ -14,6 +14,7 @@ import {
 } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { call } from "@/lib/functions";
+import { useMemberships, useSchoolJoinCode } from "@/data/hooks";
 import { space } from "@/theme";
 
 const ROLES: { id: Role; label: string }[] = [
@@ -79,6 +80,9 @@ export default function More() {
   const { profile, setActiveRole, signOut, isDemo } = useAuth();
   const activeRole = profile?.activeRole ?? "parent";
   const [seeding, setSeeding] = useState(false);
+  const { data: memberships } = useMemberships();
+  const school = memberships.find((m) => m.role === "teacher" || m.role === "school_admin");
+  const joinCode = useSchoolJoinCode(school?.schoolId);
 
   const seed = async () => {
     setSeeding(true);
@@ -116,6 +120,24 @@ export default function More() {
           })}
         </View>
       </Card>
+
+      {joinCode && (
+        <>
+          <SectionHeader>رمز انضمام أولياء الأمور</SectionHeader>
+          <Card
+            onPress={() =>
+              Alert.alert("رمز الانضمام", `${joinCode}\n\nشاركه مع أولياء أمور فصلك للانضمام.`)
+            }
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <AppText variant="mono" style={{ flex: 1, letterSpacing: 4, fontSize: 20 }}>
+                {joinCode}
+              </AppText>
+              <AppText variant="label">نسخ / مشاركة</AppText>
+            </View>
+          </Card>
+        </>
+      )}
 
       <SectionHeader>الخدمات</SectionHeader>
       <RowGroup>

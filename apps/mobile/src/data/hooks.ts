@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { collection, documentId, limit, orderBy, query, where } from "firebase/firestore";
 import {
   Alert as AlertSchema,
+  JoinCodeDoc,
   Kid,
   Membership,
   Message,
@@ -51,6 +52,14 @@ export function useNeedsOnboarding(): { needs: boolean; ready: boolean } {
 
 export function useClass(schoolId?: string, classId?: string): One<SchoolClass> {
   return useLiveDoc(schoolId && classId ? paths.class(schoolId, classId) : null, SchoolClass);
+}
+
+/** The first join code minted for a school (teachers share it with parents). */
+export function useSchoolJoinCode(schoolId?: string): string | null {
+  const { data } = useLiveQuery(schoolId ? `joincode:${schoolId}` : null, JoinCodeDoc, () =>
+    query(collection(db, paths.joinCodes()), where("schoolId", "==", schoolId), limit(1)),
+  );
+  return data[0]?.code ?? null;
 }
 
 /** Kids on a class roster (max 30 ids per query). */
