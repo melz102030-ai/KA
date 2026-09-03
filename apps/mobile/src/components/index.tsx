@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -104,18 +105,22 @@ export function Screen({
   padded?: boolean;
 }) {
   const pad = padded ? { paddingHorizontal: space.lg } : null;
+  const inner = scroll ? (
+    <ScrollView
+      style={{ flex: 1, alignSelf: "stretch" }}
+      contentContainerStyle={[{ paddingTop: space.md, paddingBottom: space.xxxl * 2 }, pad]}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[{ flex: 1, alignSelf: "stretch", paddingTop: space.md }, pad]}>{children}</View>
+  );
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={[{ paddingTop: space.md, paddingBottom: space.xxxl * 2 }, pad]}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1, paddingTop: space.md }, pad]}>{children}</View>
-      )}
+      {/* On web, cap the width and centre it — reads like the government apps' phone frame. */}
+      <View style={styles.frame}>{inner}</View>
     </SafeAreaView>
   );
 }
@@ -361,16 +366,11 @@ export function Avatar({
   size = 40,
   tone = "primary",
 }: {
-  name: string;
+  name?: string;
   size?: number;
   tone?: Tone;
 }) {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("");
+  void name; // kept for API stability; we render a neutral person glyph
   const t = TONE[tone];
   return (
     <View
@@ -383,9 +383,7 @@ export function Avatar({
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: t.fg, fontFamily: font.family.bold, fontSize: size * 0.36 }}>
-        {initials}
-      </Text>
+      <Icon name="person" size={size * 0.5} color={t.fg} />
     </View>
   );
 }
@@ -487,7 +485,12 @@ export function EmptyState({
 /* ── styles ────────────────────────────────────────────────────────────── */
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: color.bg },
+  screen: { flex: 1, backgroundColor: color.bg, alignItems: "center" },
+  frame: {
+    flex: 1,
+    width: "100%",
+    ...Platform.select({ web: { maxWidth: 480 }, default: {} }),
+  },
   card: {
     backgroundColor: color.surface,
     borderColor: color.border,
