@@ -18,6 +18,20 @@ export const callables = {
     response: z.object({ uid: z.string(), created: z.boolean() }),
   },
 
+  /**
+   * Dev helper: seed a demo school + class + kids owned by the caller so the
+   * app shows real Firestore data. Safe to call repeatedly (returns the same ids).
+   */
+  seedDemoSchool: {
+    name: "seedDemoSchool",
+    request: z.object({}).default({}),
+    response: z.object({
+      schoolId: z.string(),
+      classId: z.string(),
+      kidIds: z.array(z.string()),
+    }),
+  },
+
   /** Begin pairing a KT37: returns a code the watch APK submits back. */
   startWatchPairing: {
     name: "startWatchPairing",

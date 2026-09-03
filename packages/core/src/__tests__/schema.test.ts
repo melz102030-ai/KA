@@ -72,6 +72,17 @@ describe("callable contracts", () => {
     });
     expect(bad.success).toBe(false);
   });
+
+  it("seedDemoSchool accepts an empty request", () => {
+    expect(callables.seedDemoSchool.request.parse(undefined)).toEqual({});
+    expect(callables.seedDemoSchool.request.parse({})).toEqual({});
+  });
+
+  it("every callable name matches its map key", () => {
+    for (const [key, spec] of Object.entries(callables)) {
+      expect(spec.name).toBe(key);
+    }
+  });
 });
 
 describe("paths", () => {

@@ -1,8 +1,10 @@
-import { View } from "react-native";
+import { useState } from "react";
+import { Alert, View } from "react-native";
 import { router, type Href } from "expo-router";
 import type { Role } from "@akbadna/core";
 import { AppText, Button, Card, Screen, SectionTitle } from "@/components";
 import { useAuth } from "@/lib/auth";
+import { call } from "@/lib/functions";
 import { alpha, color, radius, space } from "@/theme";
 
 const ROLES: { id: Role; label: string; emoji: string }[] = [
@@ -73,8 +75,21 @@ const TOOLS: Tool[] = [
 ];
 
 export default function More() {
-  const { profile, setActiveRole, signOut } = useAuth();
+  const { profile, setActiveRole, signOut, isDemo } = useAuth();
   const activeRole = profile?.activeRole ?? "parent";
+  const [seeding, setSeeding] = useState(false);
+
+  const seed = async () => {
+    setSeeding(true);
+    try {
+      const res = await call("seedDemoSchool", {});
+      Alert.alert("تم", `أُنشئت مدرسة وفصل و${res.kidIds.length} طلاب مرتبطين بحسابك.`);
+    } catch {
+      Alert.alert("تعذّر", "تأكد من نشر الدوال وتفعيل Firestore.");
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <Screen>
@@ -135,9 +150,24 @@ export default function More() {
         ))}
       </View>
 
+      {!isDemo && (
+        <>
+          <SectionTitle>الحساب</SectionTitle>
+          <Button
+            label="🌱 إنشاء بيانات تجريبية في Firestore"
+            accent={color.green}
+            variant="outline"
+            loading={seeding}
+            onPress={seed}
+          />
+        </>
+      )}
+
       <View style={{ alignItems: "center", marginVertical: space.xl }}>
         <AppText variant="heading">أكبادنا</AppText>
-        <AppText variant="label">منصة التعليم الذكية — الإصدار 0.1</AppText>
+        <AppText variant="label">
+          منصة التعليم الذكية — الإصدار 0.1{isDemo ? " · وضع تجريبي" : ""}
+        </AppText>
       </View>
 
       <Button

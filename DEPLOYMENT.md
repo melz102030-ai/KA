@@ -47,6 +47,7 @@ firebase deploy --only functions
 | الدالة                | النوع        | الغرض                                                        |
 | --------------------- | ------------ | ------------------------------------------------------------ |
 | `bootstrapProfile`    | callable     | إنشاء/تحديث `users/{uid}` بعد أول دخول                       |
+| `seedDemoSchool`      | callable     | مدرسة+فصل+طلاب تجريبيون مرتبطون بالمستخدم (idempotent)       |
 | `submitAttendance`    | callable     | حضور جماعي — الخادم مرجع الكشف، idempotent، الغياب ضمني      |
 | `resolveAkbadnaId`    | callable     | بحث عن ساعة بمعرّف أكبادنا العام                             |
 | `raiseSos`            | callable     | رفع تنبيه SOS + إشعار أولياء الأمر                           |
