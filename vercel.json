@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --include-workspace-root -w @akbadna/core -w @akbadna/web",
-  "buildCommand": "npm run core:build && npm run build -w @akbadna/web",
-  "outputDirectory": "apps/web/dist",
+  "installCommand": "npm install",
+  "buildCommand": "npm run core:build && npm run export:web -w @akbadna/mobile",
+  "outputDirectory": "apps/mobile/dist",
   "framework": null,
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

@@ -22,8 +22,8 @@ build/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
-.firebaserc
 .runtimeconfig.json
+apps/watch/app/google-services.json
 
 # local env
 .env

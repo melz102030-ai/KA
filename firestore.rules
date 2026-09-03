@@ -17,6 +17,10 @@ service cloud.firestore {
       return signedIn()
         && request.auth.uid in get(/databases/$(database)/documents/kids/$(kidId)).data.guardianUids;
     }
+    // A paired KT37 authenticates with a custom token carrying { role:"device", watchId }.
+    function isDevice(watchId) {
+      return signedIn() && request.auth.token.role == 'device' && request.auth.token.watchId == watchId;
+    }
 
     // ── Profiles ──────────────────────────────────────────────
     match /users/{uid} {
@@ -67,10 +71,26 @@ service cloud.firestore {
     // ── Watches & telemetry ──────────────────────────────────
     match /watches/{watchId} {
       allow read: if signedIn();
-      allow write: if false; // pairing + settings go through callables
+      // the paired device may only touch lastSeen/battery/link; pairing + settings
+      // go through callables (Admin SDK)
+      allow update: if isDevice(watchId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['lastSeenAt', 'batteryPct', 'link', 'lastLocation', 'updatedAt']);
+      allow create, delete: if false;
+
+      match /commands/{cmdId} {
+        allow read: if isDevice(watchId);
+        allow update: if isDevice(watchId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'ackedAt']);
+        allow create, delete: if false; // queued by sendWatchCommand
+      }
+    }
+    match /telemetry/{watchId}/packets/{packetId} {
+      allow create: if isDevice(watchId);
+      allow read, update, delete: if false; // read via kid.live + rollups
     }
     match /telemetry/{watchId}/{document=**} {
-      allow read, write: if false; // functions + device ingest only
+      allow read, write: if false;
     }
 
     // ── Attendance rewards ───────────────────────────────────

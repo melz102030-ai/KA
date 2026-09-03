@@ -9,7 +9,7 @@
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase use kasa-dcabd            # يكتب .firebaserc محليًا (غير متتبَّع)
+# .firebaserc موجود في المستودع (المشروع = kasa-dcabd)
 ```
 
 في **وحدة تحكم Firebase**:
@@ -44,14 +44,18 @@ firebase deploy --only functions
 
 المنطقة: `europe-west1` (مضبوطة في الكود). الدوال المنشورة:
 
-| الدالة              | النوع        | الغرض                                                        |
-| ------------------- | ------------ | ------------------------------------------------------------ |
-| `bootstrapProfile`  | callable     | إنشاء/تحديث `users/{uid}` بعد أول دخول                       |
-| `submitAttendance`  | callable     | حضور جماعي — الخادم مرجع الكشف، idempotent، الغياب ضمني      |
-| `resolveAkbadnaId`  | callable     | بحث عن ساعة بمعرّف أكبادنا العام                             |
-| `raiseSos`          | callable     | رفع تنبيه SOS + إشعار أولياء الأمر                           |
-| `onTelemetryPacket` | Firestore    | تحديث `kid.live` + تقييم قواعد التنبيه (SOS/بطارية/نبض/سياج) |
-| `watchOfflineSweep` | scheduled 5د | تحويل الساعات الصامتة إلى offline                            |
+| الدالة                | النوع        | الغرض                                                        |
+| --------------------- | ------------ | ------------------------------------------------------------ |
+| `bootstrapProfile`    | callable     | إنشاء/تحديث `users/{uid}` بعد أول دخول                       |
+| `submitAttendance`    | callable     | حضور جماعي — الخادم مرجع الكشف، idempotent، الغياب ضمني      |
+| `resolveAkbadnaId`    | callable     | بحث عن ساعة بمعرّف أكبادنا العام                             |
+| `raiseSos`            | callable     | رفع تنبيه SOS + إشعار أولياء الأمر                           |
+| `startWatchPairing`   | callable     | ولي الأمر يبدأ اقتران KT37 → رمز مؤقت                        |
+| `confirmWatchPairing` | callable     | الساعة تؤكد الرمز → `watchId` + توكن جهاز                    |
+| `offerCarpoolTrip`    | callable     | إنشاء رحلة كاربول                                            |
+| `sendWatchCommand`    | callable     | وضع أمر في طابور `watches/{id}/commands` (+ نص SMS)          |
+| `onTelemetryPacket`   | Firestore    | تحديث `kid.live` + تقييم قواعد التنبيه (SOS/بطارية/نبض/سياج) |
+| `watchOfflineSweep`   | scheduled 5د | تحويل الساعات الصامتة إلى offline                            |
 
 اختبار محلي:
 
@@ -61,23 +65,31 @@ firebase emulators:start --only functions,firestore,auth
 
 ---
 
-## 3. تطبيق الويب (`apps/web`)
+## 3. النشر على الويب — Vercel
 
-### Vercel (الحالي)
+متصل بالمستودع، يُنشر تلقائيًا عند الدفع إلى `main`. الإعداد في `vercel.json`:
 
-متصل بالمستودع. الإعداد في `vercel.json`:
+- بناء: `core:build` ثم `expo export -p web` لتطبيق **`@akbadna/mobile`**
+- المخرجات: `apps/mobile/dist` (SPA)، مع إعادة توجيه المسارات غير الموجودة إلى `index.html`
 
-- تثبيت مُنطاق: جذر + `@akbadna/core` + `@akbadna/web` فقط
-- بناء: `core:build` ثم `vite build`
-- المخرجات: `apps/web/dist`، مع إعادة توجيه SPA
+> يعرض الرابط **تطبيق Expo الجديد** كـ PWA. `apps/web` بقي كنموذج مرجعي محلي فقط
+> (`npm run web`) ولم يعد ينشر.
 
-يُنشر تلقائيًا عند الدفع إلى `main`.
+**إن ظهرت صفحة بيضاء أو 404 على Vercel:** غالبًا إعدادات المشروع في لوحة Vercel
+متبقية من قبل. في **Project → Settings → Build & Deployment**:
+
+- Framework Preset = **Other**
+- Root Directory = فارغ (جذر المستودع)
+- Build/Output Command = فارغة (تُقرأ من `vercel.json`)
+
+ثم أعد النشر من تبويب **Deployments → ⋯ → Redeploy**.
 
 ### بديل — Firebase Hosting
 
 ```bash
-npm run core:build && npm run build -w @akbadna/web
-firebase deploy --only hosting        # ينشر apps/web/dist (مضبوط في firebase.json)
+npm run core:build && npm run export:web -w @akbadna/mobile
+# غيّر "public" في firebase.json إلى apps/mobile/dist ثم:
+firebase deploy --only hosting
 ```
 
 ---
@@ -143,6 +155,6 @@ adb install -r app-release.apk        # على ساعة KT37 عبر ADB
 
 ## 7. أسرار / إعدادات البيئة
 
-- إعداد Firebase للويب ليس سرًّا (يُطابق `apps/web/src/firebase.js`).
+- إعداد Firebase للويب ليس سرًّا (يُطابق `apps/web/src/firebase.js` و `apps/mobile/src/lib/firebase.ts`).
   لتجاوزه في الموبايل: `apps/mobile/.env.local` بمتغيرات `EXPO_PUBLIC_FIREBASE_*`.
-- لا تُودَع في المستودع: `.firebaserc`، `google-services.json`، ملفات توقيع Android/iOS.
+- لا تُودَع في المستودع: `apps/watch/app/google-services.json`، ملفات توقيع Android/iOS.

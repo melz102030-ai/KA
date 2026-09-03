@@ -4,4 +4,6 @@ build
 .expo
 coverage
 *.log
+.firebaserc
 apps/web/src/App.jsx
+apps/watch
