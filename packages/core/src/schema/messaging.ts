@@ -12,9 +12,7 @@ export const Thread = Audit.extend({
   subjectRef: z
     .object({ kind: z.enum(["kid", "class", "trip", "school"]), id: z.string() })
     .optional(),
-  lastMessage: z
-    .object({ text: z.string(), senderUid: z.string(), at: EpochMillis })
-    .optional(),
+  lastMessage: z.object({ text: z.string(), senderUid: z.string(), at: EpochMillis }).optional(),
   /** uid -> unread count. */
   unread: z.record(z.string(), z.number().int().nonnegative()).default({}),
 });

@@ -4,7 +4,11 @@ import { defineCallable, HttpsError } from "../lib/callable.js";
 import { notifyGuardians } from "../lib/notify.js";
 
 export const resolveAkbadnaId = defineCallable("resolveAkbadnaId", async (input) => {
-  const q = await db.collection(paths.kids()).where("akbadnaId", "==", input.akbadnaId).limit(1).get();
+  const q = await db
+    .collection(paths.kids())
+    .where("akbadnaId", "==", input.akbadnaId)
+    .limit(1)
+    .get();
   if (q.empty) return null;
   const kid = q.docs[0]!;
   let schoolName: string | undefined;
@@ -38,11 +42,12 @@ export const raiseSos = defineCallable("raiseSos", async (input) => {
     updatedAt: now(),
   });
 
-  if (kidId) await notifyGuardians(kidId, {
-    title: "🆘 استغاثة",
-    body: "طفلك فعّل زر الاستغاثة — افتح التطبيق الآن",
-    data: { alertId: ref.id, kind: "sos" },
-  });
+  if (kidId)
+    await notifyGuardians(kidId, {
+      title: "🆘 استغاثة",
+      body: "طفلك فعّل زر الاستغاثة — افتح التطبيق الآن",
+      data: { alertId: ref.id, kind: "sos" },
+    });
 
   return { alertId: ref.id };
 });

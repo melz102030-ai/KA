@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+captures/
+# Firebase config — download from the console, do not commit
+app/google-services.json

@@ -5,7 +5,15 @@ export const Role = z.enum(["parent", "teacher", "school_admin", "student", "dri
 export type Role = z.infer<typeof Role>;
 
 /** Coarse presence of a kid during the school day (derived from schedule + telemetry). */
-export const KidPresence = z.enum(["home", "commuting", "in_class", "break", "activity", "left_school", "unknown"]);
+export const KidPresence = z.enum([
+  "home",
+  "commuting",
+  "in_class",
+  "break",
+  "activity",
+  "left_school",
+  "unknown",
+]);
 export type KidPresence = z.infer<typeof KidPresence>;
 
 /** Attendance mark for one kid in one session. */
@@ -13,7 +21,12 @@ export const AttendanceStatus = z.enum(["present", "late", "absent", "excused"])
 export type AttendanceStatus = z.infer<typeof AttendanceStatus>;
 
 /** How an attendance mark was produced. */
-export const AttendanceMethod = z.enum(["watch_scan", "bulk_watch_scan", "manual", "auto_geofence"]);
+export const AttendanceMethod = z.enum([
+  "watch_scan",
+  "bulk_watch_scan",
+  "manual",
+  "auto_geofence",
+]);
 export type AttendanceMethod = z.infer<typeof AttendanceMethod>;
 
 /** Message / thread categories — drive colour, icon and routing. */
@@ -45,7 +58,14 @@ export const TripDirection = z.enum(["to_school", "from_school", "round_trip"]);
 export type TripDirection = z.infer<typeof TripDirection>;
 
 /** Lifecycle of a carpool trip. */
-export const TripStatus = z.enum(["offered", "forming", "confirmed", "active", "completed", "cancelled"]);
+export const TripStatus = z.enum([
+  "offered",
+  "forming",
+  "confirmed",
+  "active",
+  "completed",
+  "cancelled",
+]);
 export type TripStatus = z.infer<typeof TripStatus>;
 
 /** Lifecycle of a request to join a trip or add a contact. */

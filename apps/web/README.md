@@ -22,14 +22,15 @@
 
 المشروع: `kasa-dcabd`. الإعداد في [src/firebase.js](src/firebase.js) (مفتاح الويب ليس سرًّا — الحماية من قواعد الأمان).
 
-| الجزء | الملف | الوظيفة |
-|---|---|---|
-| تهيئة | `src/firebase.js` | `app`, `auth`, `db` |
-| الجلسة + الدخول | `src/auth.js` | دخول مجهول عند نجاح نفاذ، وحفظ البروفايل `{role, pin, faceId}` في `users/{uid}`. الجلسة تبقى بعد إعادة التحميل عبر Firebase نفسه |
-| البيانات | `src/data/store.js` | `useKids()` / `useMessages()` — اشتراك حيّ `onSnapshot` مع بذر أولي من `src/data/seed.js` عند أول تشغيل |
-| القواعد | `firestore.rules` | كل مستخدم مسجّل يقرأ/يكتب `kids` و`messages`؛ ويعدّل بروفايله فقط |
+| الجزء           | الملف               | الوظيفة                                                                                                                          |
+| --------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| تهيئة           | `src/firebase.js`   | `app`, `auth`, `db`                                                                                                              |
+| الجلسة + الدخول | `src/auth.js`       | دخول مجهول عند نجاح نفاذ، وحفظ البروفايل `{role, pin, faceId}` في `users/{uid}`. الجلسة تبقى بعد إعادة التحميل عبر Firebase نفسه |
+| البيانات        | `src/data/store.js` | `useKids()` / `useMessages()` — اشتراك حيّ `onSnapshot` مع بذر أولي من `src/data/seed.js` عند أول تشغيل                          |
+| القواعد         | `firestore.rules`   | كل مستخدم مسجّل يقرأ/يكتب `kids` و`messages`؛ ويعدّل بروفايله فقط                                                                |
 
 **خطوات لازمة في وحدة تحكم Firebase:**
+
 1. **Authentication** → فعّل مزوّد **Anonymous**.
 2. **Firestore Database** → أنشئ القاعدة (ابدأ بوضع الاختبار، أو انشر `firestore.rules`).
 3. نشر القواعد: `npx firebase deploy --only firestore:rules`

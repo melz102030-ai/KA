@@ -57,7 +57,7 @@ export function useCollection(colName, seedRows, orderField) {
       (e) => {
         setError(e);
         setLoading(false);
-      }
+      },
     );
     return unsub;
   }, [colName, orderField]); // eslint-disable-line react-hooks/exhaustive-deps

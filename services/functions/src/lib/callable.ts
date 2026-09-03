@@ -19,7 +19,10 @@ export function defineCallable<K extends CallableName>(
 
     const parsed = spec.request.safeParse(req.data);
     if (!parsed.success) {
-      throw new HttpsError("invalid-argument", parsed.error.issues.map((i) => i.message).join("; "));
+      throw new HttpsError(
+        "invalid-argument",
+        parsed.error.issues.map((i) => i.message).join("; "),
+      );
     }
 
     const result = await handler(parsed.data as never, { uid: req.auth.uid });

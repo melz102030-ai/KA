@@ -64,8 +64,12 @@ export const onTelemetryPacket = onDocumentCreated(
     const hrMin = th.heartRateMin ?? 50;
     const tempMax = th.skinTempMaxC ?? 38.5;
 
-    const fire = (kind: AlertKind, severity: "critical" | "warning", title: string, detail?: string) =>
-      raiseAlertOnce({ kind, severity, title, detail, kidId, watchId, location: p.location });
+    const fire = (
+      kind: AlertKind,
+      severity: "critical" | "warning",
+      title: string,
+      detail?: string,
+    ) => raiseAlertOnce({ kind, severity, title, detail, kidId, watchId, location: p.location });
 
     if (p.sos) await fire("sos", "critical", "طلب استغاثة SOS");
     if (p.fall) await fire("fall_detected", "critical", "اشتباه سقوط");

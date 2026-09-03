@@ -14,3 +14,4 @@ export * from "./schema/wallet.js";
 export * from "./schema/safety.js";
 
 export * from "./watch/kt37.js";
+export * from "./watch/gateway.js";

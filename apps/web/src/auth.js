@@ -52,7 +52,7 @@ export async function updateRole(role) {
   await setDoc(
     profileRef(auth.currentUser.uid),
     { role, updatedAt: serverTimestamp() },
-    { merge: true }
+    { merge: true },
   );
 }
 

@@ -49,7 +49,9 @@ const AKB_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 /** Generate a fresh Akbadna ID. `rand` defaults to Math.random for testability. */
 export function generateAkbadnaId(rand: () => number = Math.random): AkbadnaId {
   const block = () =>
-    Array.from({ length: 4 }, () => AKB_ALPHABET[Math.floor(rand() * AKB_ALPHABET.length)]).join("");
+    Array.from({ length: 4 }, () => AKB_ALPHABET[Math.floor(rand() * AKB_ALPHABET.length)]).join(
+      "",
+    );
   return `AKB-${block()}-${block()}` as AkbadnaId;
 }
 

@@ -14,6 +14,7 @@
     "mobile": "npm run start -w @akbadna/mobile",
     "functions:build": "npm run build -w @akbadna/functions",
     "core:build": "npm run build -w @akbadna/core",
+    "test": "npm run test -w @akbadna/core",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc -b"
