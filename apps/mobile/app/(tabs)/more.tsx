@@ -15,6 +15,13 @@ type Tool = { icon: string; label: string; sub: string; tint: string; href?: Hre
 
 const TOOLS: Tool[] = [
   {
+    icon: "⌚",
+    label: "اقتران ساعة KT37",
+    sub: "ربط ساعة جديدة بطفلك",
+    tint: color.teal,
+    href: "/tools/pair-watch",
+  },
+  {
     icon: "🆔",
     label: "معرّف أكبادنا",
     sub: "ربط الساعة بأي شخص بالمعرّف",
@@ -27,6 +34,13 @@ const TOOLS: Tool[] = [
     sub: "عرض جدول اليوم كاملاً",
     tint: color.blue,
     href: "/tools/schedule",
+  },
+  {
+    icon: "🗺️",
+    label: "تتبع الخروج",
+    sub: "توجيه الطالب لموقع الانتظار",
+    tint: color.teal,
+    href: "/tools/tracking",
   },
   {
     icon: "❤️",
@@ -42,9 +56,20 @@ const TOOLS: Tool[] = [
     tint: color.yellow,
     href: "/tools/wallet",
   },
-  { icon: "🗺️", label: "تتبع الخروج", sub: "توجيه الطالب لموقع الانتظار", tint: color.teal },
-  { icon: "🏫", label: "ربط نظام نور", sub: "جلب بيانات الطالب من الوزارة", tint: "#1A5276" },
-  { icon: "📡", label: "اللوحة المباشرة", sub: "تتبع كل الساعات — للمدرسة", tint: color.purple },
+  {
+    icon: "🏫",
+    label: "ربط نظام نور",
+    sub: "جلب بيانات الطالب من الوزارة",
+    tint: "#1A5276",
+    href: "/tools/noor",
+  },
+  {
+    icon: "📡",
+    label: "اللوحة المباشرة",
+    sub: "تتبع كل الساعات — للمدرسة",
+    tint: color.purple,
+    href: "/tools/receiver",
+  },
 ];
 
 export default function More() {
