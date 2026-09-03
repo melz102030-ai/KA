@@ -84,12 +84,11 @@ firebase emulators:start --only functions,firestore,auth
 
 ثم أعد النشر من تبويب **Deployments → ⋯ → Redeploy**.
 
-### بديل — Firebase Hosting
+### بديل — Firebase Hosting (أمر واحد)
 
 ```bash
-npm run core:build && npm run export:web -w @akbadna/mobile
-# غيّر "public" في firebase.json إلى apps/mobile/dist ثم:
-firebase deploy --only hosting
+npm run core:build && npm run export:web -w @akbadna/mobile && firebase deploy --only hosting
+# ينشر apps/mobile/dist → https://kasa-dcabd.web.app
 ```
 
 ---
