@@ -12,8 +12,22 @@ export const School = Audit.extend({
   campusRadiusM: z.number().positive().default(150),
   timezone: z.string().default("Asia/Riyadh"),
   weekDays: z.array(WeekDay).default([0, 1, 2, 3, 4]),
+  adminUids: z.array(z.string()).default([]),
 });
 export type School = z.infer<typeof School>;
+
+/** joinCodes/{CODE} — short-lived pointer used during onboarding. */
+export const JoinCodeDoc = Audit.extend({
+  code: z.string().min(4),
+  schoolId: z.string().min(1),
+  classId: z.string().optional(),
+  role: z.enum(["parent", "teacher"]),
+  createdByUid: z.string().min(1),
+  expiresAt: z.number().int().nonnegative().optional(),
+  uses: z.number().int().nonnegative().default(0),
+  maxUses: z.number().int().positive().optional(),
+});
+export type JoinCodeDoc = z.infer<typeof JoinCodeDoc>;
 
 /** One slot in the daily timetable. */
 export const SchedulePeriod = z.object({

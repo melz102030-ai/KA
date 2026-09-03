@@ -14,6 +14,9 @@ export const paths = {
   classes: (schoolId: string) => `schools/${schoolId}/classes`,
   class: (schoolId: string, classId: string) => `schools/${schoolId}/classes/${classId}`,
 
+  joinCodes: () => "joinCodes",
+  joinCode: (code: string) => `joinCodes/${code}`,
+
   kids: () => "kids",
   kid: (kidId: string) => `kids/${kidId}`,
 

@@ -34,6 +34,12 @@ service cloud.firestore {
       allow write: if false; // issued by functions / school admin flow
     }
 
+    // Join codes: readable by any signed-in user (to join); mutated only by functions.
+    match /joinCodes/{code} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // ── Org ──────────────────────────────────────────────────
     match /schools/{schoolId} {
       allow read: if signedIn();

@@ -2,6 +2,7 @@ import type { ColorValue } from "react-native";
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
+import { useNeedsOnboarding } from "@/data/hooks";
 import { color, font } from "@/theme";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -14,8 +15,10 @@ const tab =
 
 export default function TabsLayout() {
   const { initializing, authed } = useAuth();
+  const { needs, ready } = useNeedsOnboarding();
   if (initializing) return null;
   if (!authed) return <Redirect href="/(auth)/sign-in" />;
+  if (ready && needs) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs

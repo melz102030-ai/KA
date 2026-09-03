@@ -1,77 +1,124 @@
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { paths, type Alert, type Kid } from "@akbadna/core";
+import { useMemo } from "react";
+import { collection, documentId, limit, orderBy, query, where } from "firebase/firestore";
+import {
+  Alert as AlertSchema,
+  Kid,
+  Membership,
+  Message,
+  SchoolClass,
+  type SchedulePeriod,
+  Thread,
+  WalletAccount,
+  WalletTransaction,
+  paths,
+} from "@akbadna/core";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
-import { DEMO_KIDS } from "./demo";
+import { type Feed, type One, useLiveDoc, useLiveQuery } from "./firestore";
+import { DEMO_KIDS, DEMO_MESSAGES, DEMO_SCHEDULE } from "./demo";
 
-type Feed<T> = { data: T[]; loading: boolean; isDemo: boolean };
+const demoFeed = <T>(data: T[]): Feed<T> => ({ data, loading: false, error: null });
 
-/** Kids the signed-in user guards. Falls back to demo data when none exist yet. */
-export function useKids(): Feed<Kid> {
-  const { user } = useAuth();
-  const [state, setState] = useState<Feed<Kid>>({ data: DEMO_KIDS, loading: true, isDemo: true });
-
-  useEffect(() => {
-    if (!user) {
-      // demo session or signed out — just show sample data
-      setState({ data: DEMO_KIDS, loading: false, isDemo: true });
-      return;
-    }
-    const q = query(
-      collection(db, paths.kids()),
-      where("guardianUids", "array-contains", user.uid),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        if (snap.empty) {
-          setState({ data: DEMO_KIDS, loading: false, isDemo: true });
-          return;
-        }
-        setState({
-          data: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Kid),
-          loading: false,
-          isDemo: false,
-        });
-      },
-      () => setState({ data: DEMO_KIDS, loading: false, isDemo: true }),
-    );
-    return unsub;
-  }, [user]);
-
-  return state;
+/** Memberships of the signed-in user (drives roles + onboarding). */
+export function useMemberships(): Feed<Membership> {
+  const { user, isDemo } = useAuth();
+  const uid = user?.uid;
+  const real = useLiveQuery(!isDemo && uid ? `memberships:${uid}` : null, Membership, () =>
+    query(collection(db, paths.memberships()), where("uid", "==", uid)),
+  );
+  return isDemo ? demoFeed([]) : real;
 }
 
-/** Open alerts for the user's kids. */
-export function useAlerts(kidIds: string[]): Feed<Alert> {
-  const [state, setState] = useState<Feed<Alert>>({ data: [], loading: true, isDemo: false });
-  const key = kidIds.slice(0, 10).join(",");
+/** Kids the signed-in user guards. */
+export function useKids(): Feed<Kid> & { isDemo: boolean } {
+  const { user, isDemo } = useAuth();
+  const uid = user?.uid;
+  const real = useLiveQuery(!isDemo && uid ? `kids:${uid}` : null, Kid, () =>
+    query(collection(db, paths.kids()), where("guardianUids", "array-contains", uid)),
+  );
+  return isDemo ? { ...demoFeed(DEMO_KIDS as Kid[]), isDemo: true } : { ...real, isDemo: false };
+}
 
-  useEffect(() => {
-    const ids = key ? key.split(",") : [];
-    if (ids.length === 0) {
-      setState({ data: [], loading: false, isDemo: false });
-      return;
-    }
-    const q = query(
+/** Account has no memberships and no kids -> route to onboarding. */
+export function useNeedsOnboarding(): { needs: boolean; ready: boolean } {
+  const { isDemo } = useAuth();
+  const m = useMemberships();
+  const k = useKids();
+  if (isDemo) return { needs: false, ready: true };
+  const ready = !m.loading && !k.loading;
+  return { needs: ready && m.data.length === 0 && k.data.length === 0, ready };
+}
+
+export function useClass(schoolId?: string, classId?: string): One<SchoolClass> {
+  return useLiveDoc(schoolId && classId ? paths.class(schoolId, classId) : null, SchoolClass);
+}
+
+/** Kids on a class roster (max 30 ids per query). */
+export function useRoster(kidIds: string[]): Feed<Kid> {
+  const { isDemo } = useAuth();
+  const ids = kidIds.slice(0, 30);
+  const key = !isDemo && ids.length ? `roster:${ids.join(",")}` : null;
+  const real = useLiveQuery(key, Kid, () =>
+    query(collection(db, paths.kids()), where(documentId(), "in", ids)),
+  );
+  return isDemo ? demoFeed(DEMO_KIDS as Kid[]) : real;
+}
+
+export function useThreads(): Feed<Thread> {
+  const { user, isDemo } = useAuth();
+  const uid = user?.uid;
+  const real = useLiveQuery(!isDemo && uid ? `threads:${uid}` : null, Thread, () =>
+    query(
+      collection(db, paths.threads()),
+      where("participantUids", "array-contains", uid),
+      orderBy("updatedAt", "desc"),
+      limit(50),
+    ),
+  );
+  return isDemo ? demoFeed([]) : real;
+}
+
+export function useMessages(threadId?: string): Feed<Message> {
+  const { isDemo } = useAuth();
+  const key = !isDemo && threadId ? `messages:${threadId}` : null;
+  const real = useLiveQuery(key, Message, () =>
+    query(collection(db, paths.messages(threadId!)), orderBy("at", "asc"), limit(200)),
+  );
+  return isDemo ? demoFeed([]) : real;
+}
+
+export function useAlerts(kidIds: string[]): Feed<typeof AlertSchema._type> {
+  const { isDemo } = useAuth();
+  const ids = kidIds.slice(0, 10);
+  const key = !isDemo && ids.length ? `alerts:${ids.join(",")}` : null;
+  const real = useLiveQuery(key, AlertSchema, () =>
+    query(
       collection(db, paths.alerts()),
       where("kidId", "in", ids),
       where("state", "in", ["open", "acknowledged"]),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setState({
-          data: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Alert),
-          loading: false,
-          isDemo: false,
-        });
-      },
-      () => setState({ data: [], loading: false, isDemo: false }),
-    );
-    return unsub;
-  }, [key]);
-
-  return state;
+    ),
+  );
+  return isDemo ? demoFeed([]) : real;
 }
+
+export function useWallet(kidId?: string): One<WalletAccount> {
+  return useLiveDoc(kidId ? paths.walletAccount(kidId) : null, WalletAccount);
+}
+
+export function useWalletTx(kidId?: string): Feed<WalletTransaction> {
+  const key = kidId ? `wallettx:${kidId}` : null;
+  return useLiveQuery(key, WalletTransaction, () =>
+    query(collection(db, paths.walletTransactions(kidId!)), orderBy("at", "desc"), limit(50)),
+  );
+}
+
+/** Today's schedule for a class; falls back to a sample timetable. */
+export function useSchedule(cls: SchoolClass | null): SchedulePeriod[] {
+  return useMemo(() => {
+    const wd = String(new Date().getDay());
+    const fromClass = cls?.schedule?.[wd];
+    return fromClass && fromClass.length ? fromClass : DEMO_SCHEDULE;
+  }, [cls]);
+}
+
+export { DEMO_MESSAGES };

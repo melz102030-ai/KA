@@ -32,6 +32,80 @@ export const callables = {
     }),
   },
 
+  /* ── Onboarding: turn a fresh account into a working graph ──────────────── */
+
+  /** Parent onboarding: create the caller's kids and a family scope. */
+  createFamily: {
+    name: "createFamily",
+    request: z.object({
+      kids: z
+        .array(z.object({ name: z.string().min(1), gradeLabel: z.string().optional() }))
+        .min(1)
+        .max(8),
+    }),
+    response: z.object({ kidIds: z.array(z.string()) }),
+  },
+
+  /** Teacher / admin onboarding: create a school + first class, caller is admin. */
+  createSchoolWithClass: {
+    name: "createSchoolWithClass",
+    request: z.object({
+      schoolName: z.string().min(1),
+      className: z.string().min(1),
+      grade: z.string().min(1),
+    }),
+    response: z.object({ schoolId: z.string(), classId: z.string(), joinCode: z.string() }),
+  },
+
+  /** Join an existing school/class with a 6-char code (parent or teacher). */
+  joinByCode: {
+    name: "joinByCode",
+    request: z.object({
+      code: z.string().min(4).max(12),
+      asRole: Role,
+      kidIds: z.array(z.string()).default([]),
+    }),
+    response: z.object({ schoolId: z.string(), classId: z.string().optional() }),
+  },
+
+  /** Add one kid to the caller's family (and optionally a class). */
+  addKid: {
+    name: "addKid",
+    request: z.object({
+      name: z.string().min(1),
+      gradeLabel: z.string().optional(),
+      classId: z.string().optional(),
+      schoolId: z.string().optional(),
+    }),
+    response: z.object({ kidId: z.string(), akbadnaId: AkbadnaId }),
+  },
+
+  /** Post a message into a thread, creating the thread on first send. */
+  sendMessage: {
+    name: "sendMessage",
+    request: z.object({
+      threadId: z.string().optional(),
+      /** When no threadId: who + what the new thread is about. */
+      to: z.array(z.string()).optional(),
+      channel: z.enum(["school", "teacher", "carpool", "direct"]).default("direct"),
+      subjectRef: z
+        .object({ kind: z.enum(["kid", "class", "trip", "school"]), id: z.string() })
+        .optional(),
+      text: z.string().min(1).max(4000),
+    }),
+    response: z.object({ threadId: z.string(), messageId: z.string() }),
+  },
+
+  /** Top up a kid's wallet (mock payment for now). */
+  topUpWallet: {
+    name: "topUpWallet",
+    request: z.object({
+      kidId: z.string(),
+      amountHalalas: z.number().int().positive().max(100_000),
+    }),
+    response: z.object({ balanceHalalas: z.number().int() }),
+  },
+
   /** Begin pairing a KT37: returns a code the watch APK submits back. */
   startWatchPairing: {
     name: "startWatchPairing",

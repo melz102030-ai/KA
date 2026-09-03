@@ -55,6 +55,17 @@ export function generateAkbadnaId(rand: () => number = Math.random): AkbadnaId {
   return `AKB-${block()}-${block()}` as AkbadnaId;
 }
 
+/** Short human-typeable code for joining a school/class. */
+export const JoinCode = z.string().regex(/^[2-9A-HJ-NP-Z]{6}$/);
+export type JoinCode = z.infer<typeof JoinCode>;
+
+export function generateJoinCode(rand: () => number = Math.random): JoinCode {
+  return Array.from(
+    { length: 6 },
+    () => AKB_ALPHABET[Math.floor(rand() * AKB_ALPHABET.length)],
+  ).join("") as JoinCode;
+}
+
 /** Money is integer minor units (halalas) with an explicit currency. */
 export const Money = z.object({
   amount: z.number().int(),
