@@ -99,13 +99,32 @@ export function Screen({
   children,
   scroll = true,
   padded = true,
+  fit = false,
+  maxWidth = 480,
 }: {
   children: ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  /**
+   * Size the content to the viewport instead of running past it. The container
+   * still scrolls, but only as a safety net for when the content genuinely
+   * cannot fit (a very short window, or a keyboard covering half the screen) —
+   * at normal sizes nothing sits below the fold.
+   */
+  fit?: boolean;
+  /** Web only: how wide the centred column may grow. */
+  maxWidth?: number;
 }) {
   const pad = padded ? { paddingHorizontal: space.lg } : null;
-  const inner = scroll ? (
+  const inner = fit ? (
+    <ScrollView
+      style={{ flex: 1, alignSelf: "stretch" }}
+      contentContainerStyle={[{ flexGrow: 1, paddingVertical: space.md }, pad]}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
+  ) : scroll ? (
     <ScrollView
       style={{ flex: 1, alignSelf: "stretch" }}
       contentContainerStyle={[{ paddingTop: space.md, paddingBottom: space.xxxl * 2 }, pad]}
@@ -118,9 +137,9 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top"]}>
+    <SafeAreaView style={styles.screen} edges={fit ? ["top", "bottom"] : ["top"]}>
       {/* On web, cap the width and centre it — reads like the government apps' phone frame. */}
-      <View style={styles.frame}>{inner}</View>
+      <View style={[styles.frame, Platform.OS === "web" && { maxWidth }]}>{inner}</View>
     </SafeAreaView>
   );
 }
@@ -486,11 +505,7 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg, alignItems: "center" },
-  frame: {
-    flex: 1,
-    width: "100%",
-    ...Platform.select({ web: { maxWidth: 480 }, default: {} }),
-  },
+  frame: { flex: 1, width: "100%" },
   card: {
     backgroundColor: color.surface,
     borderColor: color.border,
