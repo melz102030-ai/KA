@@ -54,4 +54,3 @@ Thumbs.db
 .vite/
 .vercel
 services/rules-tests/node_modules
-services/rules-tests/package-lock.json
