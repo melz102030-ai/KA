@@ -9,7 +9,7 @@
     "test:watch": "firebase emulators:exec --only firestore --project akbadna-rules-test \"vitest\""
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^4.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "firebase": "^12.18.0",
     "firebase-tools": "^13.29.1",
     "typescript": "^5.7.2",
