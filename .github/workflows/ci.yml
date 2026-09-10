@@ -1,4 +1,4 @@
-name: CI
+name: الفحص المستمر
 
 on:
   push:
@@ -8,41 +8,49 @@ on:
 
 jobs:
   build:
+    name: البناء والاختبارات
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: جلب الكود
+        uses: actions/checkout@v4
+      - name: تهيئة Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci
-      - name: Build shared core
+      - name: تثبيت الحزم
+        run: npm ci
+      - name: بناء الحزمة الأساسية المشتركة
         run: npm run core:build
-      - name: Unit tests
+      - name: اختبارات الوحدة
         run: npm run test -w @akbadna/core
-      - name: Lint
+      - name: فحص جودة الكود
         run: npm run lint
-      - name: Typecheck
+      - name: فحص الأنواع
         run: |
           npm run typecheck
           npm run typecheck -w @akbadna/mobile
-      - name: Build Cloud Functions
+      - name: بناء دوال السحابة
         run: npm run build -w @akbadna/functions
-      - name: Build web app (reference)
+      - name: بناء تطبيق الويب (النموذج المرجعي)
         run: npm run build -w @akbadna/web
-      - name: Export mobile web (the deployed build)
+      - name: تصدير نسخة الويب من الموبايل (البناء المنشور)
         run: npm run export:web -w @akbadna/mobile
 
   rules:
+    name: قواعد أمان Firestore
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: جلب الكود
+        uses: actions/checkout@v4
+      - name: تهيئة Node.js
+        uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - uses: actions/setup-java@v4
+      - name: تهيئة Java
+        uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
-      - name: Firestore rules tests
+      - name: اختبارات قواعد Firestore
         working-directory: services/rules-tests
         run: |
           npm install
