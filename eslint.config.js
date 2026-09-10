@@ -71,6 +71,22 @@ export default tseslint.config(
     },
   },
 
+  // Build scripts — ESM, run by Node
+  {
+    files: ["**/scripts/**/*.{js,mjs}"],
+    languageOptions: {
+      sourceType: "module",
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        Buffer: "readonly",
+        fetch: "readonly",
+      },
+    },
+  },
+
   // Config files run in CommonJS Node
   {
     files: ["**/*.config.{js,cjs}", "**/babel.config.js", "**/metro.config.js"],

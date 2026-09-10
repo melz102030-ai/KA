@@ -7,10 +7,10 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F4F6F8",
+    "backgroundColor": "#FCF7F1",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#FFFFFF",
+      "backgroundColor": "#FCF7F1",
       "resizeMode": "contain"
     },
     "ios": {
@@ -20,8 +20,9 @@
     "android": {
       "package": "sa.akbadna.app",
       "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/android-icon-foreground.png"
+        "backgroundColor": "#FCF7F1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -33,7 +34,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      ["expo-splash-screen", { "backgroundColor": "#FFFFFF", "resizeMode": "contain" }]
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FCF7F1",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
