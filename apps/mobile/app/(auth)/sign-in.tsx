@@ -98,7 +98,7 @@ export default function SignIn() {
   const form = (
     <>
       <AppText variant="label" style={{ marginBottom: space.sm }}>
-        اختر صفتك
+        اختر صفتك:
       </AppText>
       <View style={{ gap: space.sm }}>
         {ROLES.map((r) => {
