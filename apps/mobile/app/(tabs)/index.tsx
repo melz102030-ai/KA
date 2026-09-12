@@ -20,7 +20,7 @@ import { raiseKidSos } from "@/data/mutations";
 import {
   currentPeriod,
   fmtDate,
-  fmtTime,
+  fmtTimeParts,
   nextPeriod,
   periodProgress,
   vitalsTone,
@@ -54,6 +54,7 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  const clock = fmtTimeParts(now);
   const cur = currentPeriod(schedule, now);
   const next = nextPeriod(schedule, now);
   const mins = now.getHours() * 60 + now.getMinutes();
@@ -113,9 +114,12 @@ export default function Home() {
         <View
           style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}
         >
-          <AppText style={{ fontFamily: font.family.mono, fontSize: 30, color: color.text }}>
-            {fmtTime(now)}
-          </AppText>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+            <AppText style={{ fontFamily: font.family.numBold, fontSize: 32, color: color.text }}>
+              {clock.time}
+            </AppText>
+            <AppText variant="label">{clock.meridiem}</AppText>
+          </View>
           <AppText variant="label">{fmtDate(now)}</AppText>
         </View>
 
@@ -148,9 +152,20 @@ export default function Home() {
             <AppText variant="label" style={{ flex: 1 }}>
               التالية: {next.name}
             </AppText>
-            <AppText variant="subtitle" color={color.primary}>
-              {minsToNext} د
-            </AppText>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+              <AppText
+                style={{
+                  fontFamily: font.family.numBold,
+                  fontSize: font.size.md,
+                  color: color.primary,
+                }}
+              >
+                {minsToNext}
+              </AppText>
+              <AppText variant="subtitle" color={color.primary}>
+                د
+              </AppText>
+            </View>
           </View>
         )}
       </Card>

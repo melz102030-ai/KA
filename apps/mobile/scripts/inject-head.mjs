@@ -25,6 +25,7 @@ const DESCRIPTION =
 const HEAD = `${MARKER}
     <meta name="description" content="${DESCRIPTION}" />
     <meta name="theme-color" content="#0E7A5F" />
+    <style>html,body{background-color:#F2ECE1}</style>
 
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512" />

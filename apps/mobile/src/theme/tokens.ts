@@ -10,20 +10,20 @@ export const color = {
   primaryDark: "#0A5F49",
   primarySoft: "#E7F2EF",
 
-  // surfaces
-  bg: "#F4F6F8",
-  surface: "#FFFFFF",
-  surfaceAlt: "#FAFBFC",
-  overlay: "rgba(16,21,27,0.45)",
+  // surfaces — beige ground, warm-white cards lifted off it
+  bg: "#F2ECE1",
+  surface: "#FFFCF7",
+  surfaceAlt: "#F9F4EB",
+  overlay: "rgba(28,22,14,0.45)",
 
-  // lines
-  border: "#E5E8EC",
-  borderStrong: "#D3D8DF",
+  // lines — warmed to match, or they read as cold grey on sand
+  border: "#E4DCCC",
+  borderStrong: "#D2C7B2",
 
-  // text
-  text: "#10151B",
-  textMuted: "#5A6472",
-  textDim: "#98A1AD",
+  // text — a hint of warmth in the greys so nothing looks blue on beige
+  text: "#171310",
+  textMuted: "#6B6255",
+  textDim: "#A09686",
   onPrimary: "#FFFFFF",
 
   // status (used only for real status, never decoration)
@@ -56,6 +56,9 @@ export const font = {
     bold: "Tajawal_700Bold",
     black: "Tajawal_900Black",
     mono: "SpaceMono_400Regular",
+    /** Latin digits only. Nunito has no Arabic glyphs — never wrap Arabic in it. */
+    num: "Nunito_700Bold",
+    numBold: "Nunito_800ExtraBold",
   },
   size: { xs: 11, sm: 13, md: 15, lg: 17, xl: 22, xxl: 28 },
 } as const;

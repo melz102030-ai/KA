@@ -462,7 +462,8 @@ export function StatCard({
   return (
     <View style={styles.statCard}>
       {icon && <Icon name={icon} size={16} color={TONE[tone].fg} />}
-      <Text style={{ fontFamily: font.family.black, fontSize: font.size.xl, color: color.text }}>
+      {/* The unit rides along in the same face, so keep units Latin: bpm, %, °. */}
+      <Text style={{ fontFamily: font.family.numBold, fontSize: font.size.xl, color: color.text }}>
         {value}
         {unit ? (
           <Text style={{ fontSize: font.size.sm, color: color.textMuted }}> {unit}</Text>

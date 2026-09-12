@@ -16,7 +16,7 @@ export default function Receiver() {
     const t = setInterval(() => {
       setPackets((p) => p + Math.ceil(Math.random() * 3));
       const k = kids[Math.floor(Math.random() * Math.max(1, kids.length))];
-      const time = new Date().toLocaleTimeString("ar-SA", {
+      const time = new Date().toLocaleTimeString("ar-SA-u-nu-latn", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",

@@ -13,6 +13,7 @@ import {
   Tajawal_900Black,
 } from "@expo-google-fonts/tajawal";
 import { SpaceMono_400Regular } from "@expo-google-fonts/space-mono";
+import { Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import { AuthProvider } from "@/lib/auth";
 import { color } from "@/theme";
 
@@ -35,6 +36,8 @@ export default function RootLayout() {
     Tajawal_700Bold,
     Tajawal_900Black,
     SpaceMono_400Regular,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
   });
 
   useEffect(() => {

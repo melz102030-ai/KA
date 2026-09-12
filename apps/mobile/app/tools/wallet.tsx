@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { useKids, useWallet, useWalletTx } from "@/data/hooks";
 import { topUpWallet } from "@/data/mutations";
 import { alpha, color, font, radius, space } from "@/theme";
+import { fmtDateShort } from "@/lib/time";
 
 const sar = (h: number) => (h / 100).toFixed(2);
 
@@ -140,12 +141,7 @@ export default function WalletScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <AppText variant="subtitle">{t.label}</AppText>
-                    <AppText variant="label">
-                      {new Date(t.at).toLocaleDateString("ar-SA", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </AppText>
+                    <AppText variant="label">{fmtDateShort(new Date(t.at))}</AppText>
                   </View>
                   <AppText variant="subtitle" color={credit ? color.success : color.text}>
                     {credit ? "+" : "−"}
