@@ -111,7 +111,7 @@ export default function Tracking() {
               alignItems: "center",
             }}
           >
-            <Avatar name={kids[0].name} size={40} />
+            <Avatar name={kids[0].name} subjectId={kids[0].id} size={40} />
             <View style={{ flex: 1 }}>
               <AppText variant="subtitle">{kids[0].name.split(" ")[0]}</AppText>
               <AppText variant="label" color={color.primary}>

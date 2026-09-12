@@ -244,7 +244,10 @@ export function EditableAvatar({
   return (
     <>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={(e) => {
+          e?.stopPropagation?.();
+          setOpen(true);
+        }}
         hitSlop={6}
         accessibilityRole="button"
         accessibilityLabel={name ? `تغيير صورة ${name}` : "تغيير الصورة"}

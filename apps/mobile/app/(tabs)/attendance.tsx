@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import type { AttendanceStatus, Kid } from "@akbadna/core";
-import { AppText, Avatar, Button, Card, EmptyState, Screen } from "@/components";
+import { AppText, Button, Card, EmptyState, Screen } from "@/components";
+import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAuth } from "@/lib/auth";
 import { useClass, useMemberships, useRoster } from "@/data/hooks";
 import { submitAttendance } from "@/data/mutations";
@@ -119,7 +120,7 @@ export default function Attendance() {
             {roster.map((st) => (
               <Card key={st.id} padding={space.md}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                  <Avatar name={st.name} size={38} />
+                  <EditableAvatar subjectId={st.id} name={st.name} size={38} />
                   <AppText variant="subtitle" style={{ flex: 1 }}>
                     {st.name}
                   </AppText>

@@ -14,6 +14,7 @@ import {
 } from "@/components";
 import { useAuth } from "@/lib/auth";
 import { usePrefs } from "@/lib/prefs";
+import { EditableAvatar } from "@/components/AvatarPicker";
 import { fmtDateParts, type CalendarPref } from "@/lib/time";
 import { seedDemoSchool } from "@/data/mutations";
 import { useMemberships, useSchoolJoinCode } from "@/data/hooks";
@@ -114,9 +115,20 @@ export default function More() {
 
   return (
     <Screen>
-      <AppText variant="title" style={{ paddingVertical: space.md }}>
-        المزيد
-      </AppText>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.md,
+          paddingVertical: space.md,
+        }}
+      >
+        <EditableAvatar subjectId={profile?.uid ?? "me"} name={profile?.displayName} size={56} />
+        <View style={{ flex: 1 }}>
+          <AppText variant="title">{profile?.displayName ?? "المزيد"}</AppText>
+          <AppText variant="label">اضغط الصورة لتغييرها</AppText>
+        </View>
+      </View>
 
       <SectionHeader>وضع المستخدم</SectionHeader>
       <Card padding={space.sm}>

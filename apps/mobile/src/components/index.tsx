@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { alpha, color, font, radius, shadow, space } from "@/theme";
+import { useAvatars } from "@/lib/avatars";
 import { Icon, type IconName } from "./Icon";
 
 export { Icon, type IconName } from "./Icon";
@@ -384,13 +386,18 @@ export function Avatar({
   name,
   size = 40,
   tone = "primary",
+  subjectId,
 }: {
   name?: string;
   size?: number;
   tone?: Tone;
+  /** Whose picture to show. Without it this stays the neutral glyph. */
+  subjectId?: string;
 }) {
-  void name; // kept for API stability; we render a neutral person glyph
+  void name; // kept for API stability; the picture comes from subjectId
   const t = TONE[tone];
+  const { get } = useAvatars();
+  const avatar = get(subjectId);
   return (
     <View
       style={{
@@ -400,9 +407,16 @@ export function Avatar({
         backgroundColor: t.bg,
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <Icon name="person" size={size * 0.5} color={t.fg} />
+      {avatar?.kind === "photo" ? (
+        <Image source={{ uri: avatar.uri }} style={{ width: size, height: size }} />
+      ) : avatar?.kind === "emoji" ? (
+        <Text style={{ fontSize: size * 0.55 }}>{avatar.glyph}</Text>
+      ) : (
+        <Icon name="person" size={size * 0.5} color={t.fg} />
+      )}
     </View>
   );
 }

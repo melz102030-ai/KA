@@ -70,7 +70,7 @@ export default function HealthScreen() {
                   marginBottom: space.md,
                 }}
               >
-                <Avatar name={k.name} size={44} />
+                <Avatar name={k.name} subjectId={k.id} size={44} />
                 <View style={{ flex: 1 }}>
                   <AppText variant="subtitle">{k.name}</AppText>
                   <AppText variant="label">{k.gradeLabel}</AppText>

@@ -66,7 +66,7 @@ export default function Receiver() {
               marginBottom: space.sm,
             }}
           >
-            <Avatar name={k.name} size={34} />
+            <Avatar name={k.name} subjectId={k.id} size={34} />
             <View style={{ flex: 1 }}>
               <AppText variant="subtitle">{k.name.split(" ")[0]}</AppText>
               <AppText variant="label">

@@ -14,6 +14,7 @@ import {
   ProgressBar,
   Screen,
 } from "@/components";
+import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAuth } from "@/lib/auth";
 import { useCarpoolRequests, useCarpoolTrips, useKids, useMemberships } from "@/data/hooks";
 import { decideCarpoolRequest, offerCarpoolTrip, requestCarpoolJoin } from "@/data/mutations";
@@ -126,7 +127,7 @@ function FindTrips({
             style={open ? { borderColor: color.primary } : undefined}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-              <Avatar size={40} tone="success" />
+              <EditableAvatar subjectId={t.driverUid} size={40} />
               <View style={{ flex: 1 }}>
                 <AppText variant="subtitle">
                   {t.vehicle.make} · {t.vehicle.plate}
@@ -352,7 +353,7 @@ function DemoCarpool() {
                 style={sel.includes(k.id) ? { borderColor: color.primary } : undefined}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                  <Avatar size={40} />
+                  <Avatar size={40} subjectId={k.id} />
                   <AppText variant="subtitle" style={{ flex: 1 }}>
                     {k.name}
                   </AppText>
@@ -383,7 +384,7 @@ function DemoCarpool() {
               style={driverId === d.id ? { borderColor: color.primary } : undefined}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                <Avatar size={44} tone={d.verified ? "success" : "warning"} />
+                <EditableAvatar subjectId={d.id} name={d.name} size={44} />
                 <View style={{ flex: 1 }}>
                   <AppText variant="subtitle">{d.name}</AppText>
                   <AppText variant="label">

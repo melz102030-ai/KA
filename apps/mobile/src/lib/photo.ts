@@ -71,11 +71,84 @@ export const pickFromLibrary = () =>
 export const canCartoonify = Platform.OS === "web" && typeof document !== "undefined";
 
 /**
- * Flattens the photo into a few blocks of flat colour with darkened edges — the
- * cartoon-sticker look, done on the pixels we already have rather than by
- * shipping the child's face to a model somewhere.
+ * Kuwahara filter: replaces each pixel with the mean of whichever surrounding
+ * quadrant varies least. That is what flattens skin and hair into the smooth
+ * painted patches a drawing has, while leaving the boundary between them sharp
+ * — a plain blur would smear the boundary too and the result would just look
+ * out of focus.
+ */
+function kuwahara(src: Uint8ClampedArray, n: number, radius: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(src.length);
+  const at = (x: number, y: number) =>
+    (Math.min(n - 1, Math.max(0, y)) * n + Math.min(n - 1, Math.max(0, x))) * 4;
+
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let bestVar = Infinity;
+      let bestR = 0,
+        bestG = 0,
+        bestB = 0;
+
+      // The four overlapping quadrants around (x, y).
+      for (const [sx, sy] of [
+        [-1, -1],
+        [0, -1],
+        [-1, 0],
+        [0, 0],
+      ] as const) {
+        let sum = 0,
+          sumSq = 0,
+          r = 0,
+          g = 0,
+          b = 0,
+          count = 0;
+        for (let dy = 0; dy <= radius; dy++) {
+          for (let dx = 0; dx <= radius; dx++) {
+            const i = at(x + sx * radius + dx, y + sy * radius + dy);
+            const pr = src[i]!,
+              pg = src[i + 1]!,
+              pb = src[i + 2]!;
+            const lum = 0.299 * pr + 0.587 * pg + 0.114 * pb;
+            sum += lum;
+            sumSq += lum * lum;
+            r += pr;
+            g += pg;
+            b += pb;
+            count++;
+          }
+        }
+        const mean = sum / count;
+        const variance = sumSq / count - mean * mean;
+        if (variance < bestVar) {
+          bestVar = variance;
+          bestR = r / count;
+          bestG = g / count;
+          bestB = b / count;
+        }
+      }
+
+      const o = (y * n + x) * 4;
+      out[o] = bestR;
+      out[o + 1] = bestG;
+      out[o + 2] = bestB;
+      out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
+/**
+ * Turns a face photo into a flat colour drawing with ink outlines.
  *
- * Canvas-only, so web-only: React Native has no pixel access without adding a
+ * Kuwahara smoothing → saturation lift → posterise to a handful of tones →
+ * Sobel outline thickened by one pixel. All of it runs on the pixels already on
+ * the device; the photo is never sent anywhere.
+ *
+ * It is a stylised version of the real photo, NOT a generated character: making
+ * something that looks like a Bitmoji means detecting face landmarks and
+ * redrawing from a character kit, which needs a model this app does not ship.
+ *
+ * Canvas-only, so web-only — React Native has no pixel access without a
  * graphics engine. Callers must check {@link canCartoonify} first.
  */
 export function cartoonify(dataUri: string): Promise<string> {
@@ -91,42 +164,65 @@ export function cartoonify(dataUri: string): Promise<string> {
       if (!ctx) return reject(new Error("no 2d context"));
       ctx.drawImage(img, 0, 0, n, n);
 
-      const src = ctx.getImageData(0, 0, n, n);
-      const p = src.data;
+      const frame = ctx.getImageData(0, 0, n, n);
+      const original = new Uint8ClampedArray(frame.data);
+
+      const smooth = kuwahara(original, n, 3);
+
+      // Outlines are traced from the SMOOTHED luminance, not the raw pixels.
+      // Sobel on a real photo fires on sensor noise, and the flat areas come
+      // back speckled with black dots. Kuwahara preserves edges by
+      // construction, so the real ones survive while the noise does not.
       const lum = new Float32Array(n * n);
-      for (let i = 0, q = 0; i < p.length; i += 4, q++) {
-        lum[q] = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      for (let i = 0, q = 0; i < smooth.length; i += 4, q++) {
+        lum[q] = 0.299 * smooth[i]! + 0.587 * smooth[i + 1]! + 0.114 * smooth[i + 2]!;
       }
 
-      // Posterise to 5 levels, with saturation pushed up so the flat areas read
-      // as drawn rather than as a badly compressed photo.
-      const LEVELS = 5;
+      // Saturation lift, then posterise. Few levels = poster, many = photo.
+      const LEVELS = 6;
       const step = 255 / (LEVELS - 1);
-      for (let i = 0, q = 0; i < p.length; i += 4, q++) {
-        const grey = lum[q]!;
+      const p = frame.data;
+      for (let i = 0; i < smooth.length; i += 4) {
+        const grey = 0.299 * smooth[i]! + 0.587 * smooth[i + 1]! + 0.114 * smooth[i + 2]!;
         for (let c = 0; c < 3; c++) {
-          const boosted = grey + (p[i + c]! - grey) * 1.45;
-          p[i + c] = Math.round(Math.min(255, Math.max(0, boosted)) / step) * step;
+          const lifted = grey + (smooth[i + c]! - grey) * 1.5;
+          p[i + c] = Math.round(Math.min(255, Math.max(0, lifted)) / step) * step;
         }
+        p[i + 3] = 255;
       }
 
-      // Sobel on the luminance we kept, painted back as the outline.
+      // Sobel, thickened by a pass of dilation so the ink reads as a drawn line
+      // rather than a one-pixel seam.
+      const edge = new Uint8Array(n * n);
       for (let y = 1; y < n - 1; y++) {
         for (let x = 1; x < n - 1; x++) {
-          const at = (dx: number, dy: number) => lum[(y + dy) * n + (x + dx)]!;
-          const gx = -at(-1, -1) - 2 * at(-1, 0) - at(-1, 1) + at(1, -1) + 2 * at(1, 0) + at(1, 1);
-          const gy = -at(-1, -1) - 2 * at(0, -1) - at(1, -1) + at(-1, 1) + 2 * at(0, 1) + at(1, 1);
-          if (Math.sqrt(gx * gx + gy * gy) > 90) {
-            const i = (y * n + x) * 4;
-            p[i] = 32;
-            p[i + 1] = 28;
-            p[i + 2] = 24;
+          const L = (dx: number, dy: number) => lum[(y + dy) * n + (x + dx)]!;
+          const gx = -L(-1, -1) - 2 * L(-1, 0) - L(-1, 1) + L(1, -1) + 2 * L(1, 0) + L(1, 1);
+          const gy = -L(-1, -1) - 2 * L(0, -1) - L(1, -1) + L(-1, 1) + 2 * L(0, 1) + L(1, 1);
+          if (Math.hypot(gx, gy) > 70) edge[y * n + x] = 1;
+        }
+      }
+      for (let y = 1; y < n - 1; y++) {
+        for (let x = 1; x < n - 1; x++) {
+          if (!edge[y * n + x]) continue;
+          for (const [dx, dy] of [
+            [1, 0],
+            [0, 1],
+          ] as const) {
+            const i = ((y + dy) * n + (x + dx)) * 4;
+            p[i] = 26;
+            p[i + 1] = 22;
+            p[i + 2] = 20;
           }
+          const i = (y * n + x) * 4;
+          p[i] = 26;
+          p[i + 1] = 22;
+          p[i + 2] = 20;
         }
       }
 
-      ctx.putImageData(src, 0, 0);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
+      ctx.putImageData(frame, 0, 0);
+      resolve(canvas.toDataURL("image/jpeg", 0.8));
     };
     img.src = dataUri;
   });
