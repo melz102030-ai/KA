@@ -23,8 +23,9 @@ export type Prefs = {
 };
 
 const DEFAULTS: Prefs = {
-  // Saudi readers expect the Hijri date first; Settings can change it.
-  calendar: "hijri",
+  // Hijri leading with the Gregorian under it — what the home card is laid
+  // out for. Settings can narrow it to one or the other.
+  calendar: "both",
 };
 
 const KEY = "akbadna.prefs.v1";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Pressable, View } from "react-native";
-import type { Kid } from "@akbadna/core";
+import { isDaytime, type Kid } from "@akbadna/core";
 import {
   AppText,
   Badge,
@@ -22,6 +22,7 @@ import {
   currentPeriod,
   fmtDateParts,
   fmtTimeParts,
+  weekdayName,
   nextPeriod,
   periodProgress,
   vitalsTone,
@@ -58,6 +59,10 @@ export default function Home() {
 
   const clock = fmtTimeParts(now);
   const date = fmtDateParts(now, prefs.calendar);
+  const weekday = weekdayName(now);
+  // Daylight at the school when we know where it is, else the default city.
+  const sunAt = kids.find((k) => k.live.location)?.live.location;
+  const daylight = isDaytime(now.getTime(), sunAt?.lat, sunAt?.lng);
   const cur = currentPeriod(schedule, now);
   const next = nextPeriod(schedule, now);
   const mins = now.getHours() * 60 + now.getMinutes();
@@ -112,19 +117,29 @@ export default function Home() {
         </Card>
       )}
 
-      {/* Time + current period */}
+      {/* Time + current period.
+          Right column: the weekday, then the clock with a sun or a crescent.
+          Left column: the Hijri date, then the Gregorian under it. */}
       <Card style={{ marginTop: space.md }}>
-        <View
-          style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
-            <AppText style={{ fontFamily: font.family.numBold, fontSize: 32, color: color.text }}>
-              {clock.time}
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <View>
+            <AppText style={{ fontFamily: font.family.bold, fontSize: font.size.lg }}>
+              {weekday}
             </AppText>
-            <AppText variant="label">{clock.meridiem}</AppText>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+              <AppText style={{ fontFamily: font.family.numBold, fontSize: 32, color: color.text }}>
+                {clock.time}
+              </AppText>
+              {/* Reads before the letters ص and م do, for a child who cannot yet. */}
+              <AppText style={{ fontSize: 24 }} accessibilityLabel={daylight ? "نهار" : "ليل"}>
+                {daylight ? "☀️" : "🌙"}
+              </AppText>
+            </View>
           </View>
-          <View style={{ alignItems: "flex-start" }}>
-            <AppText variant="label">{date.primary}</AppText>
+          <View style={{ alignItems: "flex-start", justifyContent: "center" }}>
+            <AppText variant="label" style={{ color: color.text }}>
+              {date.primary}
+            </AppText>
             {date.secondary && <AppText variant="caption">{date.secondary}</AppText>}
           </View>
         </View>

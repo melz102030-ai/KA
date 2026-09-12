@@ -135,6 +135,9 @@ export const fmtTime = (d: Date) => {
   return meridiem ? `${time} ${meridiem}` : time;
 };
 
+/** e.g. "السبت" — the day on its own, for a heading. */
+export const weekdayName = (d: Date) => AR_WEEKDAYS[d.getDay()]!;
+
 /** Gregorian month names as used in Saudi Arabia (not the Levantine set). */
 const GREGORIAN_MONTHS = [
   "يناير",

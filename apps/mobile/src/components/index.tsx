@@ -72,6 +72,7 @@ export function AppText({
   style,
   children,
   numberOfLines,
+  accessibilityLabel,
 }: {
   variant?: TextVariant;
   color?: string;
@@ -79,10 +80,14 @@ export function AppText({
   style?: StyleProp<TextStyle>;
   children: ReactNode;
   numberOfLines?: number;
+  /** Say this instead of the literal glyphs — an emoji otherwise reads as its
+   *  CLDR name, which is English and not what the label means here. */
+  accessibilityLabel?: string;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
+      accessibilityLabel={accessibilityLabel}
       style={[
         TEXT[variant],
         c ? { color: c } : null,

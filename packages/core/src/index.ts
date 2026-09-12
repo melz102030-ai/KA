@@ -3,6 +3,7 @@ export * from "./common.js";
 export * from "./paths.js";
 export * from "./identity.js";
 export * from "./presence.js";
+export * from "./sun.js";
 export * from "./attendanceCues.js";
 export * from "./callables.js";
 
