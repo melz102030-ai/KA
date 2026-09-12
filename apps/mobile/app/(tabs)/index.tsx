@@ -3,7 +3,6 @@ import { Alert, Pressable, View } from "react-native";
 import type { Kid } from "@akbadna/core";
 import {
   AppText,
-  Avatar,
   Badge,
   Button,
   Card,
@@ -16,6 +15,7 @@ import {
 import { router } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { usePrefs } from "@/lib/prefs";
+import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAlerts, useClass, useKids, useSchedule } from "@/data/hooks";
 import { raiseKidSos } from "@/data/mutations";
 import {
@@ -186,7 +186,7 @@ export default function Home() {
           return (
             <Card key={k.id}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                <Avatar name={k.name} size={44} />
+                <EditableAvatar subjectId={k.id} name={k.name} size={44} />
                 <View style={{ flex: 1 }}>
                   <AppText variant="subtitle">{k.name}</AppText>
                   <AppText variant="label">{k.gradeLabel}</AppText>
