@@ -7,10 +7,12 @@ import { collection, doc, setDoc } from "firebase/firestore";
 import {
   cueForAttendance,
   paths,
+  rewardCue,
   type AttendanceStatus,
   type CallableName,
   type CallableRequest,
   type CallableResponse,
+  type RewardGlyph,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
 import { call } from "@/lib/functions";
@@ -180,6 +182,43 @@ export async function queueAttendanceCue(input: {
       startedAt: cue.startedAt,
       expiresAt: cue.expiresAt,
       origin: "attendance",
+      status: "queued",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return "sent";
+  } catch {
+    return "failed";
+  }
+}
+
+/**
+ * Awards a student a badge for standing out in the lesson. It sits on the watch
+ * until the school day ends, then the device drops it on expiry.
+ *
+ * Same fire-and-forget contract as {@link queueAttendanceCue}: praise must never
+ * be the thing that makes a screen throw.
+ */
+export async function sendReward(input: {
+  kidId: string;
+  watchId?: string;
+  glyph: RewardGlyph;
+  timeZone?: string;
+}): Promise<"sent" | "no-watch" | "failed"> {
+  if (!input.watchId) return "no-watch";
+  const cue = rewardCue(input.glyph, Date.now(), input.timeZone);
+  try {
+    const ref = doc(collection(db, paths.watchCommands(input.watchId)));
+    await setDoc(ref, {
+      id: ref.id,
+      watchId: input.watchId,
+      kidId: input.kidId,
+      cue: cue.cue,
+      glyph: cue.glyph,
+      text: cue.text,
+      startedAt: cue.startedAt,
+      expiresAt: cue.expiresAt,
+      origin: "reward",
       status: "queued",
       createdAt: Date.now(),
       updatedAt: Date.now(),

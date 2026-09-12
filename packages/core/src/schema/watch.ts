@@ -96,12 +96,14 @@ export const WatchCommand = Audit.extend({
   cue: WatchCueKind,
   /** Shown verbatim. Kept short — the KT37 screen is 240x240. */
   text: z.string().max(120).optional(),
+  /** A single emoji the watch shows large: the teacher chose it. */
+  glyph: z.string().max(8).optional(),
   /** countdown only. */
   durationSec: z.number().int().positive().optional(),
   startedAt: EpochMillis,
   /** After this the watch drops it unshown rather than surfacing stale news. */
   expiresAt: EpochMillis.optional(),
-  origin: z.enum(["attendance", "manual"]).default("manual"),
+  origin: z.enum(["attendance", "reward", "manual"]).default("manual"),
   status: z.enum(["queued", "delivered", "acked"]).default("queued"),
   ackedAt: EpochMillis.optional(),
 });

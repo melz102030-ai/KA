@@ -71,3 +71,84 @@ export function formatCountdown(remainingSec: number): string {
   const s = Math.max(0, Math.floor(remainingSec));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/* ── Praise for standing out in a lesson ─────────────────────────────────── */
+
+/** What the teacher may award. The child sees the glyph itself on the watch. */
+export const REWARD_GLYPHS = ["🤩", "👍", "👏"] as const;
+export type RewardGlyph = (typeof REWARD_GLYPHS)[number];
+
+export const REWARD_LABELS: Record<RewardGlyph, string> = {
+  "🤩": "نجوم في عينيه",
+  "👍": "إعجاب",
+  "👏": "تصفيق",
+};
+
+export const REWARD_TEXT = "تميّزت اليوم في الحصة";
+
+/**
+ * The offset of `timeZone` from UTC at a given instant, in milliseconds.
+ * Derived from Intl rather than assumed, so a zone that observes DST is handled
+ * without a table.
+ */
+function tzOffsetMs(at: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(at));
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const wallClockAsUtc = Date.UTC(
+    n("year"),
+    n("month") - 1,
+    n("day"),
+    n("hour"),
+    n("minute"),
+    n("second"),
+  );
+  // Drop sub-second noise: the parts have none, so `at` must not either.
+  return wallClockAsUtc - Math.floor(at / 1000) * 1000;
+}
+
+/**
+ * The instant the school's day ends — midnight at the start of tomorrow, in the
+ * school's own timezone. A reward given during the last lesson should sit on
+ * the child's wrist all evening and be gone by morning.
+ *
+ * Two passes: the offset is read at `now`, the candidate midnight computed, then
+ * the offset re-read AT that candidate. Across a DST boundary the two differ,
+ * and using the first would land the expiry an hour out.
+ */
+export function endOfDayMs(now: number, timeZone = "Asia/Riyadh"): number {
+  const midnightFor = (offset: number) => {
+    const local = new Date(now + offset);
+    const startOfNextLocalDay = Date.UTC(
+      local.getUTCFullYear(),
+      local.getUTCMonth(),
+      local.getUTCDate() + 1,
+    );
+    return startOfNextLocalDay - offset;
+  };
+  const first = midnightFor(tzOffsetMs(now, timeZone));
+  return midnightFor(tzOffsetMs(first, timeZone));
+}
+
+/** A "you stood out today" cue, alive until the school day is over. */
+export function rewardCue(
+  glyph: RewardGlyph,
+  now: number,
+  timeZone?: string,
+): AttendanceCue & { glyph: RewardGlyph } {
+  return {
+    cue: "praise",
+    glyph,
+    text: REWARD_TEXT,
+    startedAt: now,
+    expiresAt: endOfDayMs(now, timeZone),
+  };
+}

@@ -2,18 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import {
   LATE_COUNTDOWN_SEC,
+  REWARD_GLYPHS,
+  REWARD_LABELS,
   livePresence,
   suggestedStatus,
   type AttendanceStatus,
   type GeoPoint,
   type Kid,
   type LivePresence,
+  type RewardGlyph,
 } from "@akbadna/core";
 import { AppText, Button, Card, Dot, EmptyState, Icon, Screen } from "@/components";
 import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAuth } from "@/lib/auth";
 import { useClass, useMemberships, useRoster, useSchool } from "@/data/hooks";
-import { queueAttendanceCue, submitAttendance } from "@/data/mutations";
+import { queueAttendanceCue, sendReward, submitAttendance } from "@/data/mutations";
 import { alpha, color, font, radius, space } from "@/theme";
 
 const OPTIONS: { s: AttendanceStatus; label: string; tone: string }[] = [
@@ -155,6 +158,7 @@ export default function Attendance() {
 
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>({});
   const [cueState, setCueState] = useState<Record<string, string>>({});
+  const [awarded, setAwarded] = useState<Record<string, RewardGlyph>>({});
   const [saving, setSaving] = useState(false);
 
   /**
@@ -211,6 +215,35 @@ export default function Attendance() {
         `${skipped} طالب بلا إشارة من الساعة — لم يُعلَّم أحد منهم تلقائيًا، حدّدهم يدويًا.`,
       );
     }
+  };
+
+  /**
+   * Awards a badge for standing out. Kept separate from the register: praise is
+   * not an attendance mark, and giving one must not disturb what the teacher
+   * has already recorded for that student.
+   */
+  const award = (student: RosterEntry, glyph: RewardGlyph) => {
+    setAwarded((p) => ({ ...p, [student.id]: glyph }));
+    if (isDemo) {
+      setCueState((p) => ({ ...p, [student.id]: `${glyph} أُرسل للساعة حتى نهاية اليوم` }));
+      return;
+    }
+    void sendReward({
+      kidId: student.id,
+      watchId: student.watchId,
+      glyph,
+      timeZone: school?.timezone,
+    }).then((r) =>
+      setCueState((p) => ({
+        ...p,
+        [student.id]:
+          r === "sent"
+            ? `${glyph} أُرسل للساعة حتى نهاية اليوم`
+            : r === "no-watch"
+              ? "لا توجد ساعة مقترنة"
+              : "تعذّر الإرسال للساعة",
+      })),
+    );
   };
 
   const submit = async () => {
@@ -354,6 +387,43 @@ export default function Attendance() {
                           >
                             {o.label}
                           </AppText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {/* Standing out in the lesson — three badges, teacher's pick. */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: space.xs,
+                      marginTop: space.sm,
+                    }}
+                  >
+                    <AppText variant="caption" style={{ marginInlineEnd: space.xs }}>
+                      تميّز:
+                    </AppText>
+                    {REWARD_GLYPHS.map((g) => {
+                      const on = awarded[st.id] === g;
+                      return (
+                        <Pressable
+                          key={g}
+                          onPress={() => award(st, g)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}
+                          accessibilityLabel={`${REWARD_LABELS[g]} — ${st.name}`}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: radius.md,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: on ? color.primarySoft : color.bg,
+                            borderWidth: 1,
+                            borderColor: on ? color.primary : color.border,
+                          }}
+                        >
+                          <AppText style={{ fontSize: 18 }}>{g}</AppText>
                         </Pressable>
                       );
                     })}
