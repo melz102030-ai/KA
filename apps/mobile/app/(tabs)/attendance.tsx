@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import {
+  LATE_COUNTDOWN_SEC,
   livePresence,
   suggestedStatus,
   type AttendanceStatus,
@@ -12,7 +13,7 @@ import { AppText, Button, Card, Dot, EmptyState, Icon, Screen } from "@/componen
 import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAuth } from "@/lib/auth";
 import { useClass, useMemberships, useRoster, useSchool } from "@/data/hooks";
-import { submitAttendance } from "@/data/mutations";
+import { queueAttendanceCue, submitAttendance } from "@/data/mutations";
 import { alpha, color, font, radius, space } from "@/theme";
 
 const OPTIONS: { s: AttendanceStatus; label: string; tone: string }[] = [
@@ -41,35 +42,54 @@ const outFromSchool = (metres: number): GeoPoint => ({
   lng: DEMO_SCHOOL.location.lng,
 });
 
-type RosterEntry = { id: string; name: string; location?: GeoPoint; lastTelemetryAt?: number };
+type RosterEntry = {
+  id: string;
+  name: string;
+  watchId?: string;
+  location?: GeoPoint;
+  lastTelemetryAt?: number;
+};
+
+/** What the child's watch was told, per the mark the teacher just made. */
+const CUE_FEEDBACK: Record<AttendanceStatus, string> = {
+  present: "أُرسل للساعة: تهنئة 👍",
+  late: `أُرسل للساعة: عدّاد ${LATE_COUNTDOWN_SEC / 60} دقائق`,
+  absent: "أُرسل للساعة: بانتظار رد ولي الأمر",
+  excused: "لم يُرسل شيء للساعة",
+};
 
 const DEMO_ROSTER = (now: number): RosterEntry[] => [
   {
     id: "s1",
+    watchId: "demo-w1",
     name: "أحمد محمد الغامدي",
     location: outFromSchool(40),
     lastTelemetryAt: now - 20_000,
   },
   {
     id: "s2",
+    watchId: "demo-w2",
     name: "سارة عبدالله العتيبي",
     location: outFromSchool(95),
     lastTelemetryAt: now - 45_000,
   },
   {
     id: "s3",
+    watchId: "demo-w3",
     name: "خالد سعد الدوسري",
     location: outFromSchool(260),
     lastTelemetryAt: now - 30_000,
   },
   {
     id: "s4",
+    watchId: "demo-w4",
     name: "نورة فهد الشمري",
     location: outFromSchool(2_400),
     lastTelemetryAt: now - 60_000,
   },
   {
     id: "s5",
+    watchId: "demo-w5",
     name: "عمر ناصر القحطاني",
     location: outFromSchool(120),
     lastTelemetryAt: now - 15_000,
@@ -134,7 +154,35 @@ export default function Attendance() {
   }, [roster, live]);
 
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>({});
+  const [cueState, setCueState] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  /**
+   * Marks the student and tells their watch, in that order. The register is the
+   * teacher's record; it must stand whether or not the device is reachable, so
+   * the cue result is shown on the row rather than thrown.
+   */
+  const mark = (student: RosterEntry, status: AttendanceStatus) => {
+    setMarks((p) => ({ ...p, [student.id]: status }));
+    if (isDemo) {
+      setCueState((p) => ({ ...p, [student.id]: CUE_FEEDBACK[status] }));
+      return;
+    }
+    setCueState((p) => ({ ...p, [student.id]: "جارٍ الإرسال للساعة…" }));
+    void queueAttendanceCue({ kidId: student.id, watchId: student.watchId, status }).then((r) =>
+      setCueState((p) => ({
+        ...p,
+        [student.id]:
+          r === "sent"
+            ? CUE_FEEDBACK[status]
+            : r === "no-watch"
+              ? "لا توجد ساعة مقترنة"
+              : r === "skipped"
+                ? CUE_FEEDBACK[status]
+                : "تعذّر الإرسال للساعة",
+      })),
+    );
+  };
 
   const counts = OPTIONS.reduce(
     (acc, o) => ({ ...acc, [o.s]: Object.values(marks).filter((m) => m === o.s).length }),
@@ -147,8 +195,14 @@ export default function Attendance() {
     let skipped = 0;
     for (const s of roster) {
       const suggested = suggestedStatus(live[s.id] ?? "unknown");
-      if (suggested) next[s.id] = suggested;
-      else skipped++;
+      if (suggested) {
+        next[s.id] = suggested;
+        if (isDemo) {
+          setCueState((p) => ({ ...p, [s.id]: CUE_FEEDBACK[suggested] }));
+        } else {
+          void queueAttendanceCue({ kidId: s.id, watchId: s.watchId, status: suggested });
+        }
+      } else skipped++;
     }
     setMarks(next);
     if (skipped) {
@@ -279,7 +333,10 @@ export default function Attendance() {
                       return (
                         <Pressable
                           key={o.s}
-                          onPress={() => setMarks((p) => ({ ...p, [st.id]: o.s }))}
+                          onPress={() => mark(st, o.s)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          accessibilityLabel={`${o.label} — ${st.name}`}
                           style={{
                             flex: 1,
                             paddingVertical: space.sm,
@@ -301,6 +358,19 @@ export default function Attendance() {
                       );
                     })}
                   </View>
+                  {cueState[st.id] && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 5,
+                        marginTop: space.sm,
+                      }}
+                    >
+                      <Icon name="watch-outline" size={13} color={color.textMuted} />
+                      <AppText variant="caption">{cueState[st.id]}</AppText>
+                    </View>
+                  )}
                 </Card>
               );
             })}

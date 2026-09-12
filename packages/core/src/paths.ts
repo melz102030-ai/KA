@@ -22,6 +22,8 @@ export const paths = {
 
   watches: () => "watches",
   watch: (watchId: string) => `watches/${watchId}`,
+  watchCommands: (watchId: string) => `watches/${watchId}/commands`,
+  watchCommand: (watchId: string, commandId: string) => `watches/${watchId}/commands/${commandId}`,
   telemetryPackets: (watchId: string) => `telemetry/${watchId}/packets`,
   vitalsRollups: (watchId: string) => `telemetry/${watchId}/rollups`,
 

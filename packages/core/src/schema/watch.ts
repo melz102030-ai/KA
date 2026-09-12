@@ -70,3 +70,39 @@ export const VitalsRollup = z.object({
   packets: z.number().int().nonnegative(),
 });
 export type VitalsRollup = z.infer<typeof VitalsRollup>;
+
+/* ── What the watch face shows the child ─────────────────────────────────── */
+
+/**
+ * praise    — a buzz and a thumbs-up, for a student marked present
+ * countdown — a shrinking timer, for one marked late
+ * notice    — a line of text, for one marked absent
+ */
+export const WatchCueKind = z.enum(["praise", "countdown", "notice"]);
+export type WatchCueKind = z.infer<typeof WatchCueKind>;
+
+/**
+ * watches/{watchId}/commands/{commandId} — one thing for the watch to show.
+ *
+ * `startedAt` is the wall clock when the teacher acted, NOT when the watch
+ * received it. A countdown must be rendered as `durationSec - (now -
+ * startedAt)`; if the watch were to count a fresh ten minutes from delivery, a
+ * device that was asleep would hand the child extra time.
+ */
+export const WatchCommand = Audit.extend({
+  id: z.string().min(1),
+  watchId: z.string().min(1),
+  kidId: z.string().optional(),
+  cue: WatchCueKind,
+  /** Shown verbatim. Kept short — the KT37 screen is 240x240. */
+  text: z.string().max(120).optional(),
+  /** countdown only. */
+  durationSec: z.number().int().positive().optional(),
+  startedAt: EpochMillis,
+  /** After this the watch drops it unshown rather than surfacing stale news. */
+  expiresAt: EpochMillis.optional(),
+  origin: z.enum(["attendance", "manual"]).default("manual"),
+  status: z.enum(["queued", "delivered", "acked"]).default("queued"),
+  ackedAt: EpochMillis.optional(),
+});
+export type WatchCommand = z.infer<typeof WatchCommand>;

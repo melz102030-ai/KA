@@ -5,10 +5,12 @@
  */
 import { collection, doc, setDoc } from "firebase/firestore";
 import {
+  cueForAttendance,
+  paths,
+  type AttendanceStatus,
   type CallableName,
   type CallableRequest,
   type CallableResponse,
-  paths,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
 import { call } from "@/lib/functions";
@@ -149,4 +151,41 @@ export async function raiseKidSos(
     updatedAt: Date.now(),
   });
   return { alertId: ref.id };
+}
+
+/**
+ * Queues the cue a mark should put on the child's watch.
+ *
+ * Fire-and-forget by design: the register is the teacher's record and must not
+ * fail because a watch is unpaired or offline. Returns what happened so the row
+ * can show it, and never throws at the caller.
+ */
+export async function queueAttendanceCue(input: {
+  kidId: string;
+  watchId?: string;
+  status: AttendanceStatus;
+}): Promise<"sent" | "no-watch" | "skipped" | "failed"> {
+  const cue = cueForAttendance(input.status, Date.now());
+  if (!cue) return "skipped"; // excused — nothing reaches the child
+  if (!input.watchId) return "no-watch";
+  try {
+    const ref = doc(collection(db, paths.watchCommands(input.watchId)));
+    await setDoc(ref, {
+      id: ref.id,
+      watchId: input.watchId,
+      kidId: input.kidId,
+      cue: cue.cue,
+      text: cue.text,
+      ...(cue.durationSec ? { durationSec: cue.durationSec } : {}),
+      startedAt: cue.startedAt,
+      expiresAt: cue.expiresAt,
+      origin: "attendance",
+      status: "queued",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return "sent";
+  } catch {
+    return "failed";
+  }
 }

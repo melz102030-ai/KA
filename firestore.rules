@@ -110,9 +110,32 @@ service cloud.firestore {
       allow create, delete: if false;
 
       match /commands/{cmdId} {
+        // Who the cue is for, per the document being written.
+        function cueKid() { return request.resource.data.kidId; }
+
+        // The watch named in the path must actually be the one paired to that
+        // kid. Without this a guardian could aim any device on the system by
+        // naming a child they are allowed to write for.
+        function watchBelongsToKid() {
+          return get(/databases/$(database)/documents/watches/$(watchId)).data.kidId == cueKid();
+        }
+
+        function mayCue() {
+          return watchBelongsToKid() && (
+            guardianOf(cueKid())
+            || teacherOfClass(kidData(cueKid()).schoolId, kidData(cueKid()).classId)
+          );
+        }
+
         allow read: if isDevice(watchId);
+        // A cue always enters the queue unacked: the device alone may say it
+        // was delivered or seen.
+        allow create: if mayCue()
+          && request.resource.data.watchId == watchId
+          && request.resource.data.status == 'queued'
+          && !('ackedAt' in request.resource.data);
         allow update: if isDevice(watchId) && changed(['status', 'ackedAt']);
-        allow create, delete: if false;
+        allow delete: if false;
       }
     }
     match /telemetry/{watchId}/packets/{packetId} {

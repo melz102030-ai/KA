@@ -143,3 +143,75 @@ describe("wallet", () => {
     );
   });
 });
+
+describe("watch cues", () => {
+  // w1 is paired to k1 (guarded by p1, in class c1 taught by t1).
+  // w9 is paired to k9, a child p1 has nothing to do with.
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, "kids/k1"), {
+        name: "K1",
+        guardianUids: ["p1"],
+        schoolId: "sc1",
+        classId: "c1",
+        watchId: "w1",
+        akbadnaId: "AKB-2345-6789",
+      });
+      await setDoc(doc(d, "kids/k9"), {
+        name: "K9",
+        guardianUids: ["p9"],
+        schoolId: "sc1",
+        classId: "c9",
+        watchId: "w9",
+        akbadnaId: "AKB-3456-7890",
+      });
+      await setDoc(doc(d, "schools/sc1/classes/c1"), { name: "C1", teacherIds: ["t1"] });
+      await setDoc(doc(d, "schools/sc1/classes/c9"), { name: "C9", teacherIds: ["t9"] });
+      await setDoc(doc(d, "watches/w1"), { kidId: "k1", imei: "111111111111111" });
+      await setDoc(doc(d, "watches/w9"), { kidId: "k9", imei: "999999999999999" });
+    });
+  });
+
+  const cue = (kidId: string, watchId: string) => ({
+    watchId,
+    kidId,
+    cue: "praise",
+    text: "أحسنت",
+    startedAt: Date.now(),
+    origin: "attendance",
+    status: "queued",
+  });
+
+  it("the class teacher may cue a student's watch", async () => {
+    await assertSucceeds(setDoc(doc(asUser("t1"), "watches/w1/commands/x1"), cue("k1", "w1")));
+  });
+
+  it("a guardian may cue their own kid's watch", async () => {
+    await assertSucceeds(setDoc(doc(asUser("p1"), "watches/w1/commands/x2"), cue("k1", "w1")));
+  });
+
+  it("a teacher of another class may not", async () => {
+    await assertFails(setDoc(doc(asUser("t9"), "watches/w1/commands/x3"), cue("k1", "w1")));
+  });
+
+  it("a stranger may not", async () => {
+    await assertFails(setDoc(doc(asGuest(), "watches/w1/commands/x4"), cue("k1", "w1")));
+  });
+
+  // The case the watchBelongsToKid check exists for: p1 is allowed to write
+  // cues for k1, and tries to land one on a different child's device.
+  it("cannot aim another child's watch by naming their own kid", async () => {
+    await assertFails(setDoc(doc(asUser("p1"), "watches/w9/commands/x5"), cue("k1", "w9")));
+  });
+
+  it("cannot pre-mark a cue as already seen", async () => {
+    await assertFails(
+      setDoc(doc(asUser("t1"), "watches/w1/commands/x6"), {
+        ...cue("k1", "w1"),
+        status: "acked",
+        ackedAt: Date.now(),
+      }),
+    );
+  });
+});
