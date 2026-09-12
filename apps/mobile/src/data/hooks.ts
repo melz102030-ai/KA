@@ -8,6 +8,7 @@ import {
   JoinCodeDoc,
   Kid,
   Membership,
+  School,
   Message,
   SchoolClass,
   type SchedulePeriod,
@@ -55,6 +56,11 @@ export function useNeedsOnboarding(): { needs: boolean; ready: boolean } {
 
 export function useClass(schoolId?: string, classId?: string): One<SchoolClass> {
   return useLiveDoc(schoolId && classId ? paths.class(schoolId, classId) : null, SchoolClass);
+}
+
+/** The school doc — needed for its coordinates and campus fence. */
+export function useSchool(schoolId?: string): One<School> {
+  return useLiveDoc(schoolId ? paths.school(schoolId) : null, School);
 }
 
 /** The first join code minted for a school (teachers share it with parents). */
