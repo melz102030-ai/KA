@@ -12,7 +12,9 @@ import { Platform } from "react-native";
 import {
   onAuthStateChanged,
   RecaptchaVerifier,
+  createUserWithEmailAndPassword,
   signInAnonymously,
+  signInWithEmailAndPassword,
   signInWithPhoneNumber,
   signOut as fbSignOut,
   type ConfirmationResult,
@@ -36,6 +38,14 @@ type AuthState = {
   phoneAuthAvailable: boolean;
   phoneStep: PhoneStep;
   signInDev: (role: Role, displayName?: string) => Promise<void>;
+  signInWithNationalId: (nationalId: string, password: string) => Promise<void>;
+  registerWithNationalId: (input: {
+    nationalId: string;
+    password: string;
+    displayName: string;
+    phone: string;
+    role: Role;
+  }) => Promise<void>;
   startPhoneVerification: (e164: string) => Promise<void>;
   confirmPhoneCode: (code: string, role: Role, displayName?: string) => Promise<void>;
   resetPhone: () => void;
@@ -43,12 +53,26 @@ type AuthState = {
   signOut: () => Promise<void>;
 };
 
+/**
+ * Firebase Auth has no "national id" provider, so the id is carried as the local
+ * part of an address in a domain we own and never send mail to. The id itself is
+ * what the person types; this is only how it is keyed inside Firebase.
+ */
+const idAsEmail = (nationalId: string) => `${nationalId.trim()}@id.akbadna.sa`;
+
 const Ctx = createContext<AuthState | null>(null);
 
-const makeProfile = (role: Role, name: string, uid: string, phone?: string): UserProfile => ({
+const makeProfile = (
+  role: Role,
+  name: string,
+  uid: string,
+  phone?: string,
+  nationalId?: string,
+): UserProfile => ({
   uid,
   displayName: name,
   ...(phone ? { phone } : {}),
+  ...(nationalId ? { nationalId } : {}),
   roles: [role],
   activeRole: role,
   locale: "ar",
@@ -59,7 +83,13 @@ const makeProfile = (role: Role, name: string, uid: string, phone?: string): Use
 });
 
 /** Create the profile doc after a real sign-in (client-side, free-plan). */
-async function ensureProfileDoc(uid: string, role: Role, name: string, phone?: string) {
+async function ensureProfileDoc(
+  uid: string,
+  role: Role,
+  name: string,
+  phone?: string,
+  nationalId?: string,
+) {
   if (USE_FUNCTIONS) {
     try {
       await call("bootstrapProfile", { displayName: name, activeRole: role, locale: "ar" });
@@ -73,7 +103,7 @@ async function ensureProfileDoc(uid: string, role: Role, name: string, phone?: s
   if (snap.exists()) {
     await setDoc(ref, { updatedAt: Date.now() }, { merge: true });
   } else {
-    await setDoc(ref, makeProfile(role, name, uid, phone));
+    await setDoc(ref, makeProfile(role, name, uid, phone, nationalId));
   }
 }
 
@@ -131,6 +161,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDemoProfile(makeProfile(role, name, "demo-user"));
     }
   }, []);
+
+  const signInWithNationalId = useCallback<AuthState["signInWithNationalId"]>(
+    async (nationalId, password) => {
+      await signInWithEmailAndPassword(auth, idAsEmail(nationalId), password);
+    },
+    [],
+  );
+
+  const registerWithNationalId = useCallback<AuthState["registerWithNationalId"]>(
+    async ({ nationalId, password, displayName, phone, role }) => {
+      const cred = await createUserWithEmailAndPassword(auth, idAsEmail(nationalId), password);
+      await ensureProfileDoc(cred.user.uid, role, displayName, phone, nationalId);
+    },
+    [],
+  );
 
   const startPhoneVerification = useCallback<AuthState["startPhoneVerification"]>(async (e164) => {
     if (Platform.OS !== "web") throw new Error("دخول الجوال يتطلب نسخة تطوير على الأجهزة");
@@ -190,6 +235,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phoneAuthAvailable: Platform.OS === "web",
       phoneStep,
       signInDev,
+      signInWithNationalId,
+      registerWithNationalId,
       startPhoneVerification,
       confirmPhoneCode,
       resetPhone,
@@ -203,6 +250,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       phoneStep,
       signInDev,
+      signInWithNationalId,
+      registerWithNationalId,
       startPhoneVerification,
       confirmPhoneCode,
       resetPhone,
