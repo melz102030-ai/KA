@@ -10,6 +10,14 @@ export const color = {
   primaryDark: "#0A5F49",
   primarySoft: "#E7F2EF",
 
+  /**
+   * The green of the Saudi identity the Ministry of Education carries. Kept
+   * apart from `primary`: this one is borrowed for the institutional chrome
+   * (the tab frames), not a colour to restyle the product with.
+   */
+  moeGreen: "#006C35",
+  moeGreenSoft: "#E6F0EA",
+
   // surfaces — beige ground, warm-white cards lifted off it
   bg: "#F2ECE1",
   surface: "#FFFCF7",
