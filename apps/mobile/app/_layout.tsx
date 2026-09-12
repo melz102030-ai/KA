@@ -15,6 +15,7 @@ import {
 import { SpaceMono_400Regular } from "@expo-google-fonts/space-mono";
 import { Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import { AuthProvider } from "@/lib/auth";
+import { PrefsProvider } from "@/lib/prefs";
 import { color } from "@/theme";
 
 // Arabic-first: lay everything out right-to-left.
@@ -49,10 +50,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <Slot />
-        </AuthProvider>
+        <PrefsProvider>
+          <AuthProvider>
+            <StatusBar style="dark" />
+            <Slot />
+          </AuthProvider>
+        </PrefsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

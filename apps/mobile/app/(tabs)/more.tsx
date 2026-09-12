@@ -13,9 +13,17 @@ import {
   SectionHeader,
 } from "@/components";
 import { useAuth } from "@/lib/auth";
+import { usePrefs } from "@/lib/prefs";
+import { fmtDateParts, type CalendarPref } from "@/lib/time";
 import { seedDemoSchool } from "@/data/mutations";
 import { useMemberships, useSchoolJoinCode } from "@/data/hooks";
 import { space } from "@/theme";
+
+const CALENDARS: { id: CalendarPref; label: string }[] = [
+  { id: "hijri", label: "هجري" },
+  { id: "gregorian", label: "ميلادي" },
+  { id: "both", label: "كلاهما" },
+];
 
 const ROLES: { id: Role; label: string }[] = [
   { id: "parent", label: "ولي أمر" },
@@ -85,6 +93,8 @@ const TOOLS: Tool[] = [
 export default function More() {
   const { profile, setActiveRole, signOut, isDemo } = useAuth();
   const activeRole = profile?.activeRole ?? "parent";
+  const { prefs, setCalendar } = usePrefs();
+  const calendarPreview = fmtDateParts(new Date(), prefs.calendar);
   const [seeding, setSeeding] = useState(false);
   const { data: memberships } = useMemberships();
   const school = memberships.find((m) => m.role === "teacher" || m.role === "school_admin");
@@ -124,6 +134,29 @@ export default function More() {
               />
             );
           })}
+        </View>
+      </Card>
+
+      <SectionHeader>التقويم</SectionHeader>
+      <Card padding={space.sm}>
+        <View style={{ flexDirection: "row", gap: space.xs }}>
+          {CALENDARS.map((c) => (
+            <Button
+              key={c.id}
+              label={c.label}
+              size="sm"
+              variant={prefs.calendar === c.id ? "primary" : "ghost"}
+              onPress={() => setCalendar(c.id)}
+              style={{ flex: 1 }}
+            />
+          ))}
+        </View>
+        {/* Live preview, so the choice is obvious before leaving the screen. */}
+        <View style={{ alignItems: "center", marginTop: space.sm, gap: 2 }}>
+          <AppText variant="label">{calendarPreview.primary}</AppText>
+          {calendarPreview.secondary && (
+            <AppText variant="caption">{calendarPreview.secondary}</AppText>
+          )}
         </View>
       </Card>
 

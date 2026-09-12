@@ -15,11 +15,12 @@ import {
 } from "@/components";
 import { router } from "expo-router";
 import { useAuth } from "@/lib/auth";
+import { usePrefs } from "@/lib/prefs";
 import { useAlerts, useClass, useKids, useSchedule } from "@/data/hooks";
 import { raiseKidSos } from "@/data/mutations";
 import {
   currentPeriod,
-  fmtDate,
+  fmtDateParts,
   fmtTimeParts,
   nextPeriod,
   periodProgress,
@@ -47,6 +48,7 @@ export default function Home() {
   const { data: cls } = useClass(first?.schoolId, first?.classId);
   const schedule = useSchedule(cls);
   const { data: alerts } = useAlerts(kids.map((k) => k.id));
+  const { prefs } = usePrefs();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export default function Home() {
   }, []);
 
   const clock = fmtTimeParts(now);
+  const date = fmtDateParts(now, prefs.calendar);
   const cur = currentPeriod(schedule, now);
   const next = nextPeriod(schedule, now);
   const mins = now.getHours() * 60 + now.getMinutes();
@@ -120,7 +123,10 @@ export default function Home() {
             </AppText>
             <AppText variant="label">{clock.meridiem}</AppText>
           </View>
-          <AppText variant="label">{fmtDate(now)}</AppText>
+          <View style={{ alignItems: "flex-start" }}>
+            <AppText variant="label">{date.primary}</AppText>
+            {date.secondary && <AppText variant="caption">{date.secondary}</AppText>}
+          </View>
         </View>
 
         {cur ? (
