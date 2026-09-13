@@ -228,10 +228,11 @@ export function Button({
                 ? color.borderStrong
                 : color.primary
               : variant === "secondary"
-                ? color.surface
+                ? color.moeGreenSoft
                 : "transparent",
           borderWidth: variant === "secondary" || variant === "danger" ? 1 : 0,
-          borderColor: variant === "danger" ? alpha(color.danger, 0.4) : color.border,
+          borderColor:
+            variant === "danger" ? alpha(color.danger, 0.4) : alpha(color.moeGreen, 0.35),
           opacity: pressed ? 0.9 : 1,
           alignSelf: fullWidth ? "stretch" : undefined,
         },
@@ -269,7 +270,7 @@ export function Button({
 
 export function ListRow({
   icon,
-  iconColor = color.primary,
+  iconColor = color.moeGreen,
   title,
   subtitle,
   value,
@@ -289,7 +290,16 @@ export function ListRow({
   const body = (
     <View style={styles.row}>
       {icon && (
-        <View style={[styles.rowIcon, { backgroundColor: alpha(iconColor, 0.1) }]}>
+        <View
+          style={[
+            styles.rowIcon,
+            {
+              backgroundColor: alpha(iconColor, 0.1),
+              borderWidth: 1,
+              borderColor: alpha(iconColor, 0.25),
+            },
+          ]}
+        >
           <Icon name={icon} size={18} color={danger ? color.danger : iconColor} />
         </View>
       )}
@@ -593,8 +603,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: color.surface,
-    borderColor: color.border,
+    backgroundColor: color.moeGreenSoft,
+    borderColor: alpha(color.moeGreen, 0.3),
     borderWidth: 1,
     borderRadius: radius.md,
     padding: space.md,

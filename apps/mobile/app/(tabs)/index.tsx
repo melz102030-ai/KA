@@ -21,13 +21,15 @@ import { raiseKidSos } from "@/data/mutations";
 import {
   currentPeriod,
   fmtDateParts,
+  fmtDuration,
   fmtTimeParts,
+  secondsUntilClock,
   weekdayName,
   nextPeriod,
   periodProgress,
   vitalsTone,
 } from "@/lib/time";
-import { color, font, space } from "@/theme";
+import { color, font, radius, space } from "@/theme";
 
 const PRESENCE: Record<
   string,
@@ -65,8 +67,7 @@ export default function Home() {
   const daylight = isDaytime(now.getTime(), sunAt?.lat, sunAt?.lng);
   const cur = currentPeriod(schedule, now);
   const next = nextPeriod(schedule, now);
-  const mins = now.getHours() * 60 + now.getMinutes();
-  const minsToNext = next ? Math.max(0, toMins(next.start) - mins) : null;
+  const secsToNext = next ? secondsUntilClock(next.start, now) : null;
 
   const ping = (k: Kid) =>
     Alert.alert("إرسال نداء", `سيتم تنبيه ساعة ${k.name.split(" ")[0]} الآن.`);
@@ -157,7 +158,40 @@ export default function Home() {
                 <AppText variant="caption">الحصة الحالية</AppText>
                 <AppText variant="subtitle">{cur.name}</AppText>
               </View>
-              <Badge label={`${cur.start} – ${cur.end}`} tone="primary" />
+              {/* Separate Texts in a row: in RTL the first child sits on the
+                  right, so the period reads start → end the way Arabic does.
+                  A single bidi string put the end time first. */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  paddingHorizontal: space.sm,
+                  paddingVertical: 3,
+                  borderRadius: radius.sm,
+                  backgroundColor: color.moeGreenSoft,
+                }}
+              >
+                <AppText
+                  style={{
+                    fontFamily: font.family.num,
+                    fontSize: font.size.sm,
+                    color: color.moeGreen,
+                  }}
+                >
+                  {cur.start}
+                </AppText>
+                <AppText style={{ fontSize: font.size.sm, color: color.moeGreen }}>←</AppText>
+                <AppText
+                  style={{
+                    fontFamily: font.family.num,
+                    fontSize: font.size.sm,
+                    color: color.moeGreen,
+                  }}
+                >
+                  {cur.end}
+                </AppText>
+              </View>
             </View>
             <ProgressBar value={periodProgress(cur, now) * 100} />
           </View>
@@ -167,26 +201,22 @@ export default function Home() {
           </AppText>
         )}
 
-        {next && minsToNext !== null && minsToNext > 0 && (
+        {next && secsToNext !== null && secsToNext > 0 && (
           <View style={styles_next}>
             <Icon name="time-outline" size={16} color={color.textMuted} />
             <AppText variant="label" style={{ flex: 1 }}>
               التالية: {next.name}
             </AppText>
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-              <AppText
-                style={{
-                  fontFamily: font.family.numBold,
-                  fontSize: font.size.md,
-                  color: color.primary,
-                }}
-              >
-                {minsToNext}
-              </AppText>
-              <AppText variant="subtitle" color={color.primary}>
-                د
-              </AppText>
-            </View>
+            {/* Ticks every second — the card already re-renders that often. */}
+            <AppText
+              style={{
+                fontFamily: font.family.numBold,
+                fontSize: font.size.lg,
+                color: color.moeGreen,
+              }}
+            >
+              {fmtDuration(secsToNext)}
+            </AppText>
           </View>
         )}
       </Card>
@@ -269,11 +299,6 @@ export default function Home() {
     </Screen>
   );
 }
-
-const toMins = (t: string) => {
-  const [h, m] = t.split(":").map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-};
 
 const styles_header = {
   flexDirection: "row" as const,

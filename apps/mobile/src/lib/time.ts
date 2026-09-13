@@ -198,3 +198,28 @@ export const vitalsTone = {
   heartRate: (hr: number): Tone => (hr > 100 ? "danger" : hr > 90 ? "warning" : "success"),
   battery: (b: number): Tone => (b > 50 ? "success" : b > 20 ? "warning" : "danger"),
 };
+
+/**
+ * Seconds from `now` until a "HH:MM" later today. Zero once the moment passes,
+ * so a countdown never runs backwards past its target.
+ */
+export const secondsUntilClock = (clock: string, now: Date) => {
+  const target = clockToMinutes(clock) * 60;
+  const elapsed = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  return Math.max(0, target - elapsed);
+};
+
+/**
+ * A running countdown: "MM:SS" inside the hour, "H:MM:SS" beyond it.
+ *
+ * Minutes are not padded in the hour form — "1:05:09" reads as a clock, while
+ * "01:05:09" reads as a duration nobody asked for.
+ */
+export const fmtDuration = (totalSec: number) => {
+  const s = Math.max(0, Math.floor(totalSec));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const hours = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  return hours ? `${hours}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
+};
