@@ -6,7 +6,8 @@ export const DEMO_KIDS: Kid[] = [
   {
     id: "demo-k1",
     name: "أحمد محمد الغامدي",
-    gradeLabel: "أول متوسط - أ",
+    gender: "boy",
+    grade: 7,
     guardianUids: ["demo"],
     akbadnaId: "AKB-7X3K-9P2Q",
     live: {
@@ -24,7 +25,8 @@ export const DEMO_KIDS: Kid[] = [
   {
     id: "demo-k2",
     name: "منى محمد الغامدي",
-    gradeLabel: "ثاني ابتدائي - ب",
+    gender: "girl",
+    grade: 2,
     guardianUids: ["demo"],
     akbadnaId: "AKB-4M8T-1L6R",
     live: {

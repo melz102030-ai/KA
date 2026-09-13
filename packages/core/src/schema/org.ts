@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Audit, ClockTime, GeoPoint, WeekDay } from "../common.js";
+import { GradeNumber, SchoolSegment } from "../education.js";
 
 /** schools/{schoolId} */
 export const School = Audit.extend({
@@ -7,6 +8,11 @@ export const School = Audit.extend({
   name: z.string().min(1),
   /** Ministry of Education "Noor" school id, when linked. */
   noorSchoolId: z.string().optional(),
+  /**
+   * Boys' or girls'. Never both: a Saudi school takes one and is staffed
+   * accordingly, and this is what a child's enrolment is checked against.
+   */
+  segment: SchoolSegment.optional(),
   location: GeoPoint.optional(),
   /** Default campus fence; individual gates live in `geofences`. */
   campusRadiusM: z.number().positive().default(150),
@@ -44,7 +50,9 @@ export type SchedulePeriod = z.infer<typeof SchedulePeriod>;
 export const SchoolClass = Audit.extend({
   id: z.string().min(1),
   schoolId: z.string().min(1),
-  name: z.string().min(1), // "أول متوسط - أ"
+  name: z.string().min(1), // "الأول متوسط - أ"
+  /** 1-12. `gradeText` keeps whatever a school typed before this existed. */
+  gradeNumber: GradeNumber.optional(),
   grade: z.string().min(1),
   homeroomTeacherId: z.string().optional(),
   teacherIds: z.array(z.string()).default([]),

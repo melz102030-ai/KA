@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AkbadnaId, Audit, EpochMillis, GeoPoint } from "../common.js";
 import { KidPresence } from "../enums.js";
+import { Gender, GradeNumber } from "../education.js";
 
 /** Denormalised, fast-changing snapshot kept on the kid doc for cheap list reads. */
 export const KidLiveState = z.object({
@@ -25,8 +26,13 @@ export const Kid = Audit.extend({
   /** Optional avatar glyph; the app renders initials, so this is not required. */
   avatarGlyph: z.string().optional(),
   birthDate: z.string().date().optional(),
+  /** Decides which school this child can be enrolled in — see canEnrol. */
+  gender: Gender.optional(),
   schoolId: z.string().optional(),
   classId: z.string().optional(),
+  /** 1-12 across the three stages. The Arabic name is derived, never stored. */
+  grade: GradeNumber.optional(),
+  /** Free-text fallback for records imported before `grade` existed. */
   gradeLabel: z.string().optional(),
   noorStudentId: z.string().optional(),
   guardianUids: z.array(z.string()).min(1),

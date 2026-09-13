@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Alert, Pressable, View } from "react-native";
-import { isDaytime, type Kid } from "@akbadna/core";
+import {
+  SEGMENT_LABELS,
+  classLabel,
+  groupChildren,
+  isDaytime,
+  segmentsPresent,
+  type Kid,
+  type SchoolSegment,
+} from "@akbadna/core";
 import {
   AppText,
   Badge,
@@ -53,6 +61,12 @@ export default function Home() {
   const { data: alerts } = useAlerts(kids.map((k) => k.id));
   const { prefs } = usePrefs();
   const [now, setNow] = useState(() => new Date());
+  // Only offered when the parent actually has children on both sides; a family
+  // with only boys should not be asked to choose between two tabs.
+  const sides = segmentsPresent(kids);
+  const [side, setSide] = useState<SchoolSegment | "all">("all");
+  const shown = side === "all" ? kids : kids.filter((k) => segmentsPresent([k])[0] === side);
+  const { groups, unsorted } = groupChildren(shown);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -222,80 +236,112 @@ export default function Home() {
       </Card>
 
       <SectionHeader>الأبناء</SectionHeader>
-      <View style={{ gap: space.md }}>
-        {kids.map((k) => {
-          const hr = k.live.heartRate ?? 0;
-          const temp = k.live.skinTempC ?? 0;
-          const batt = k.live.batteryPct ?? 0;
-          const pres = PRESENCE[k.live.presence] ?? PRESENCE.unknown!;
-          return (
-            <Card key={k.id}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                <EditableAvatar subjectId={k.id} name={k.name} size={44} />
-                <View style={{ flex: 1 }}>
-                  <AppText variant="subtitle">{k.name}</AppText>
-                  <AppText variant="label">{k.gradeLabel}</AppText>
+
+      {sides.length > 1 && (
+        <View style={{ flexDirection: "row", gap: space.xs, marginBottom: space.sm }}>
+          {(["all", ...sides] as const).map((s) => (
+            <Button
+              key={s}
+              label={s === "all" ? "الكل" : SEGMENT_LABELS[s]}
+              size="sm"
+              variant={side === s ? "primary" : "ghost"}
+              onPress={() => setSide(s)}
+              style={{ flex: 1 }}
+            />
+          ))}
+        </View>
+      )}
+
+      {[
+        ...groups.map((g) => ({ key: g.key, label: g.label, children: g.children })),
+        ...(unsorted.length
+          ? [{ key: "unsorted", label: "لم تُستكمل بياناتهم", children: unsorted }]
+          : []),
+      ].map((group) => (
+        <View key={group.key} style={{ gap: space.md, marginBottom: space.lg }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+            <View style={{ height: 1, flex: 1, backgroundColor: color.border }} />
+            <AppText variant="caption" color={color.moeGreen}>
+              {group.label}
+            </AppText>
+            <View style={{ height: 1, width: 14, backgroundColor: color.border }} />
+          </View>
+          {group.children.map((k) => {
+            const hr = k.live.heartRate ?? 0;
+            const temp = k.live.skinTempC ?? 0;
+            const batt = k.live.batteryPct ?? 0;
+            const pres = PRESENCE[k.live.presence] ?? PRESENCE.unknown!;
+            return (
+              <Card key={k.id}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                  <EditableAvatar subjectId={k.id} name={k.name} size={44} />
+                  <View style={{ flex: 1 }}>
+                    <AppText variant="subtitle">{k.name}</AppText>
+                    <AppText variant="label">
+                      {k.grade ? classLabel(k.grade) : k.gradeLabel}
+                    </AppText>
+                  </View>
+                  <Badge
+                    label={pres.label}
+                    tone={pres.tone}
+                    icon={k.live.watchOnline ? "ellipse" : "ellipse-outline"}
+                  />
                 </View>
-                <Badge
-                  label={pres.label}
-                  tone={pres.tone}
-                  icon={k.live.watchOnline ? "ellipse" : "ellipse-outline"}
-                />
-              </View>
 
-              <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
-                <StatCard
-                  label="النبض"
-                  value={String(Math.round(hr))}
-                  unit="bpm"
-                  icon="heart-outline"
-                  tone={vitalsTone.heartRate(hr)}
-                />
-                <StatCard
-                  label="الحرارة"
-                  value={temp.toFixed(1)}
-                  unit="°"
-                  icon="thermometer-outline"
-                />
-                <StatCard
-                  label="البطارية"
-                  value={String(Math.round(batt))}
-                  unit="%"
-                  icon="battery-half-outline"
-                  tone={vitalsTone.battery(batt)}
-                />
-              </View>
+                <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
+                  <StatCard
+                    label="النبض"
+                    value={String(Math.round(hr))}
+                    unit="bpm"
+                    icon="heart-outline"
+                    tone={vitalsTone.heartRate(hr)}
+                  />
+                  <StatCard
+                    label="الحرارة"
+                    value={temp.toFixed(1)}
+                    unit="°"
+                    icon="thermometer-outline"
+                  />
+                  <StatCard
+                    label="البطارية"
+                    value={String(Math.round(batt))}
+                    unit="%"
+                    icon="battery-half-outline"
+                    tone={vitalsTone.battery(batt)}
+                  />
+                </View>
 
-              <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
-                <Button
-                  label="نداء"
-                  size="sm"
-                  variant="secondary"
-                  icon="notifications-outline"
-                  onPress={() => ping(k)}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  label="الموقع"
-                  size="sm"
-                  variant="secondary"
-                  icon="location-outline"
-                  onPress={() => locate(k)}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  label="استغاثة"
-                  size="sm"
-                  variant="danger"
-                  icon="warning-outline"
-                  onPress={() => sos(k)}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </Card>
-          );
-        })}
-      </View>
+                <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.md }}>
+                  <Button
+                    label="نداء"
+                    size="sm"
+                    variant="secondary"
+                    icon="notifications-outline"
+                    onPress={() => ping(k)}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    label="الموقع"
+                    size="sm"
+                    variant="secondary"
+                    icon="location-outline"
+                    onPress={() => locate(k)}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    label="استغاثة"
+                    size="sm"
+                    variant="danger"
+                    icon="warning-outline"
+                    onPress={() => sos(k)}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      ))}
     </Screen>
   );
 }
