@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 /** Who a person is in the system. A single account may hold several roles. */
-export const Role = z.enum(["parent", "teacher", "school_admin", "student", "driver"]);
+/**
+ * Who an account can act as. No "student": the child is represented by a Kid
+ * document and a watch, never by a login of their own.
+ */
+export const Role = z.enum(["parent", "teacher", "school_admin", "driver"]);
 export type Role = z.infer<typeof Role>;
 
 /** Coarse presence of a kid during the school day (derived from schedule + telemetry). */

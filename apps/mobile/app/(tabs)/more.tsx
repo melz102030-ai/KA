@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { router, type Href } from "expo-router";
-import type { Role } from "@akbadna/core";
 import {
   AppText,
   Button,
@@ -24,12 +23,6 @@ const CALENDARS: { id: CalendarPref; label: string }[] = [
   { id: "hijri", label: "هجري" },
   { id: "gregorian", label: "ميلادي" },
   { id: "both", label: "كلاهما" },
-];
-
-const ROLES: { id: Role; label: string }[] = [
-  { id: "parent", label: "ولي أمر" },
-  { id: "teacher", label: "معلم" },
-  { id: "student", label: "طالب" },
 ];
 
 type Tool = { icon: IconName; label: string; sub: string; href?: Href };
@@ -92,8 +85,7 @@ const TOOLS: Tool[] = [
 ];
 
 export default function More() {
-  const { profile, setActiveRole, signOut, isDemo } = useAuth();
-  const activeRole = profile?.activeRole ?? "parent";
+  const { profile, signOut, isDemo } = useAuth();
   const { prefs, setCalendar } = usePrefs();
   const calendarPreview = fmtDateParts(new Date(), prefs.calendar);
   const [seeding, setSeeding] = useState(false);
@@ -129,25 +121,6 @@ export default function More() {
           <AppText variant="label">اضغط الصورة لتغييرها</AppText>
         </View>
       </View>
-
-      <SectionHeader>وضع المستخدم</SectionHeader>
-      <Card padding={space.sm}>
-        <View style={{ flexDirection: "row", gap: space.xs }}>
-          {ROLES.map((r) => {
-            const active = activeRole === r.id;
-            return (
-              <Button
-                key={r.id}
-                label={r.label}
-                size="sm"
-                variant={active ? "primary" : "ghost"}
-                onPress={() => void setActiveRole(r.id)}
-                style={{ flex: 1 }}
-              />
-            );
-          })}
-        </View>
-      </Card>
 
       <SectionHeader>التقويم</SectionHeader>
       <Card padding={space.sm}>
