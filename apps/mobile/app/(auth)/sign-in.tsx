@@ -74,7 +74,7 @@ export default function SignIn() {
   const doSignIn = wrap(async () => {
     if (idFault) throw new Error(NATIONAL_ID_MESSAGES[idFault]);
     if (password.length < 6) throw new Error("كلمة المرور ستة أحرف على الأقل");
-    await signInWithNationalId(nationalId.trim(), password);
+    await signInWithNationalId(nationalId.trim(), password, role);
   });
 
   const doRegister = wrap(async () => {
@@ -191,54 +191,54 @@ export default function SignIn() {
         })}
       </View>
 
-      {mode === "register" && (
-        <>
-          <AppText variant="label" style={{ marginBottom: space.sm }}>
-            اختر صفتك:
-          </AppText>
-          <View style={{ gap: space.sm, marginBottom: gap }}>
-            {ROLES.map((r) => {
-              const active = role === r.id;
-              return (
-                <Card
-                  key={r.id}
-                  onPress={() => setRole(r.id)}
-                  padding={tight ? space.sm : space.md}
-                  style={
-                    active
-                      ? { borderColor: color.moeGreen, backgroundColor: color.moeGreenSoft }
-                      : undefined
-                  }
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-                    <View
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: radius.md,
-                        backgroundColor: alpha(color.moeGreen, active ? 0.14 : 0.07),
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Icon name={r.icon} size={19} color={color.moeGreen} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <AppText variant="subtitle">{r.label}</AppText>
-                      <AppText variant="label">{r.sub}</AppText>
-                    </View>
-                    <Icon
-                      name={active ? "radio-button-on" : "radio-button-off"}
-                      size={20}
-                      color={active ? color.moeGreen : color.textDim}
-                    />
+      {/* Shown for signing in too: an account may belong to someone who is
+          both a parent and a teacher, and this is the mode they enter in. */}
+      <>
+        <AppText variant="label" style={{ marginBottom: space.sm }}>
+          {mode === "register" ? "اختر صفتك:" : "ادخل بصفة:"}
+        </AppText>
+        <View style={{ gap: space.sm, marginBottom: gap }}>
+          {ROLES.map((r) => {
+            const active = role === r.id;
+            return (
+              <Card
+                key={r.id}
+                onPress={() => setRole(r.id)}
+                padding={tight ? space.sm : space.md}
+                style={
+                  active
+                    ? { borderColor: color.moeGreen, backgroundColor: color.moeGreenSoft }
+                    : undefined
+                }
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: radius.md,
+                      backgroundColor: alpha(color.moeGreen, active ? 0.14 : 0.07),
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name={r.icon} size={19} color={color.moeGreen} />
                   </View>
-                </Card>
-              );
-            })}
-          </View>
-        </>
-      )}
+                  <View style={{ flex: 1 }}>
+                    <AppText variant="subtitle">{r.label}</AppText>
+                    <AppText variant="label">{r.sub}</AppText>
+                  </View>
+                  <Icon
+                    name={active ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={active ? color.moeGreen : color.textDim}
+                  />
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      </>
 
       <View style={{ gap: space.md }}>
         {idField}

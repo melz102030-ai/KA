@@ -20,7 +20,7 @@ import {
   type ConfirmationResult,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { paths, type Role, type UserProfile } from "@akbadna/core";
 import { auth, db } from "./firebase";
 import { call } from "./functions";
@@ -38,7 +38,8 @@ type AuthState = {
   phoneAuthAvailable: boolean;
   phoneStep: PhoneStep;
   signInDev: (role: Role, displayName?: string) => Promise<void>;
-  signInWithNationalId: (nationalId: string, password: string) => Promise<void>;
+  /** `role` is the mode to enter as; it becomes the account's active role. */
+  signInWithNationalId: (nationalId: string, password: string, role?: Role) => Promise<void>;
   registerWithNationalId: (input: {
     nationalId: string;
     password: string;
@@ -163,8 +164,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithNationalId = useCallback<AuthState["signInWithNationalId"]>(
-    async (nationalId, password) => {
-      await signInWithEmailAndPassword(auth, idAsEmail(nationalId), password);
+    async (nationalId, password, role) => {
+      const cred = await signInWithEmailAndPassword(auth, idAsEmail(nationalId), password);
+      if (!role) return;
+      // arrayUnion as well as activeRole: leaving `roles` behind would make the
+      // profile contradict itself — an active role the account does not hold.
+      await setDoc(
+        doc(db, paths.user(cred.user.uid)),
+        { activeRole: role, roles: arrayUnion(role), updatedAt: Date.now() },
+        { merge: true },
+      );
     },
     [],
   );
