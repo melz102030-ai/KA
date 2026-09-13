@@ -157,28 +157,27 @@ const GREGORIAN_MONTHS = [
 /** Which calendar a reader wants. Chosen per user in Settings. */
 export type CalendarPref = "hijri" | "gregorian" | "both";
 
-/** e.g. "السبت، 1 ربيع الآخر 1448 هـ" */
+/**
+ * e.g. "1 ربيع الآخر 1448 هـ" — the date alone.
+ *
+ * The weekday is deliberately absent: callers that want it ask {@link
+ * weekdayName} and place it themselves, rather than every date line carrying a
+ * day that the surrounding screen has usually already said.
+ */
 export const fmtDate = (d: Date) => {
   const h = hijri(d);
-  return `${AR_WEEKDAYS[d.getDay()]}، ${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year} هـ`;
+  return `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year} هـ`;
 };
 
-/** e.g. "السبت، 12 سبتمبر 2026 م" */
+/** e.g. "12 سبتمبر 2026 م" */
 export const fmtGregorian = (d: Date) =>
-  `${AR_WEEKDAYS[d.getDay()]}، ${d.getDate()} ${GREGORIAN_MONTHS[d.getMonth()]} ${d.getFullYear()} م`;
+  `${d.getDate()} ${GREGORIAN_MONTHS[d.getMonth()]} ${d.getFullYear()} م`;
 
-/**
- * The date split into what to show, honouring the reader's calendar choice.
- * "both" leads with the Hijri date and drops the weekday from the second line,
- * since repeating it would just be noise.
- */
+/** The date split into what to show, honouring the reader's calendar choice. */
 export function fmtDateParts(d: Date, mode: CalendarPref): { primary: string; secondary?: string } {
   if (mode === "gregorian") return { primary: fmtGregorian(d) };
   if (mode === "both") {
-    return {
-      primary: fmtDate(d),
-      secondary: `${d.getDate()} ${GREGORIAN_MONTHS[d.getMonth()]} ${d.getFullYear()} م`,
-    };
+    return { primary: fmtDate(d), secondary: fmtGregorian(d) };
   }
   return { primary: fmtDate(d) };
 }

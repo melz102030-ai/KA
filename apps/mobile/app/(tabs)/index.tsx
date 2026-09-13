@@ -124,7 +124,7 @@ export default function Home() {
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           <View>
             <AppText style={{ fontFamily: font.family.bold, fontSize: font.size.lg }}>
-              {weekday}
+              يوم {weekday}
             </AppText>
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
               <AppText style={{ fontFamily: font.family.numBold, fontSize: 32, color: color.text }}>
@@ -137,10 +137,10 @@ export default function Home() {
             </View>
           </View>
           <View style={{ alignItems: "flex-start", justifyContent: "center" }}>
-            <AppText variant="label" style={{ color: color.text }}>
-              {date.primary}
-            </AppText>
-            {date.secondary && <AppText variant="caption">{date.secondary}</AppText>}
+            {/* Set at the weekday's size, so the two sides of the card read
+                as one line of type rather than a heading beside a footnote. */}
+            <AppText style={{ fontSize: font.size.lg, color: color.text }}>{date.primary}</AppText>
+            {date.secondary && <AppText variant="label">{date.secondary}</AppText>}
           </View>
         </View>
 
