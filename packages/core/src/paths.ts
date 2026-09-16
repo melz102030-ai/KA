@@ -14,6 +14,13 @@ export const paths = {
   classes: (schoolId: string) => `schools/${schoolId}/classes`,
   class: (schoolId: string, classId: string) => `schools/${schoolId}/classes/${classId}`,
 
+  years: (schoolId: string) => `schools/${schoolId}/years`,
+  year: (schoolId: string, yearId: string) => `schools/${schoolId}/years/${yearId}`,
+  enrolments: (schoolId: string, yearId: string) =>
+    `schools/${schoolId}/years/${yearId}/enrolments`,
+  enrolment: (schoolId: string, yearId: string, kidId: string) =>
+    `schools/${schoolId}/years/${yearId}/enrolments/${kidId}`,
+
   joinCodes: () => "joinCodes",
   joinCode: (code: string) => `joinCodes/${code}`,
 

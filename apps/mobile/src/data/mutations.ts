@@ -3,19 +3,28 @@
  * plan). Set EXPO_PUBLIC_USE_FUNCTIONS=1 to route the same calls through the
  * deployed Cloud Functions instead — no screen changes needed.
  */
-import { arrayUnion, collection, doc, setDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, setDoc, writeBatch } from "firebase/firestore";
 import {
+  CLOSE_YEAR_MESSAGES,
   canInvite,
+  closeYearProblem,
+  continuesNextYear,
   cueForAttendance,
-  validateSchedule,
+  nextYearId,
   paths,
   rewardCue,
+  rolloverPlan,
+  validateSchedule,
+  yearLabel,
   type AttendanceStatus,
   type CallableName,
   type CallableRequest,
   type CallableResponse,
+  type PromotionOutcome,
   type RewardGlyph,
   type Role,
+  type RolloverStudent,
+  type YearStatus,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
 import { call } from "@/lib/functions";
@@ -367,4 +376,138 @@ export async function saveSchedule(input: {
     { schedule, updatedAt: Date.now() },
     { merge: true },
   );
+}
+
+/** Opens an academic year for a school, e.g. 1447. */
+export async function openYear(input: {
+  schoolId: string;
+  startHijriYear: number;
+  startsAt: number;
+  endsAt: number;
+}): Promise<string> {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+  const yearId = String(input.startHijriYear);
+  const now = Date.now();
+  await setDoc(doc(db, paths.year(input.schoolId, yearId)), {
+    id: yearId,
+    schoolId: input.schoolId,
+    label: yearLabel(input.startHijriYear),
+    status: "active",
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: u,
+  });
+  return yearId;
+}
+
+/**
+ * Ends the year.
+ *
+ * The order matters. Each child's closing record is written first, because it
+ * is the only copy of where they were: the kid document is about to be
+ * overwritten with next year's grade, and once that happens nothing else in the
+ * system remembers that they sat in الخامس. Only then does the year flip to
+ * archived and the next one open.
+ *
+ * A batch keeps it atomic — a half-promoted school, with some children moved up
+ * and some not, is worse than one that never started.
+ */
+export async function closeYear(input: {
+  schoolId: string;
+  yearId: string;
+  status: YearStatus;
+  students: RolloverStudent[];
+  overrides?: Record<string, PromotionOutcome>;
+  endsAt?: number;
+  force?: boolean;
+}): Promise<{ nextYearId: string; promoted: number; graduated: number }> {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+
+  const now = Date.now();
+  const plan = rolloverPlan(input.students, input.overrides ?? {});
+  const problem = closeYearProblem({
+    status: input.status,
+    plan,
+    now,
+    endsAt: input.endsAt,
+    force: input.force,
+  });
+  if (problem) throw new Error(CLOSE_YEAR_MESSAGES[problem]);
+
+  const nextId = String(nextYearId(Number(input.yearId)));
+  const batch = writeBatch(db);
+
+  for (const row of plan.rows) {
+    // 1. The year that is ending, stamped with what happened.
+    batch.set(
+      doc(db, paths.enrolment(input.schoolId, input.yearId, row.kidId)),
+      {
+        id: row.kidId,
+        kidId: row.kidId,
+        schoolId: input.schoolId,
+        yearId: input.yearId,
+        grade: row.fromGrade ?? null,
+        status: row.closesAs,
+        outcome: row.outcome,
+        decidedBy: u,
+        decidedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+
+    // 2. The child's own record, which always describes today.
+    batch.set(
+      doc(db, paths.kid(row.kidId)),
+      continuesNextYear(row.outcome!)
+        ? { grade: row.toGrade, enrolmentStatus: "active", updatedAt: now }
+        : { enrolmentStatus: row.closesAs, classId: null, updatedAt: now },
+      { merge: true },
+    );
+
+    // 3. The year opening, for whoever carries on.
+    if (continuesNextYear(row.outcome!)) {
+      batch.set(doc(db, paths.enrolment(input.schoolId, nextId, row.kidId)), {
+        id: row.kidId,
+        kidId: row.kidId,
+        schoolId: input.schoolId,
+        yearId: nextId,
+        grade: row.toGrade,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  batch.set(
+    doc(db, paths.year(input.schoolId, input.yearId)),
+    { status: "archived", closedAt: now, closedBy: u, updatedAt: now },
+    { merge: true },
+  );
+
+  const nextStart = Number(input.yearId) + 1;
+  batch.set(
+    doc(db, paths.year(input.schoolId, nextId)),
+    {
+      id: nextId,
+      schoolId: input.schoolId,
+      label: yearLabel(nextStart),
+      status: "active",
+      startsAt: now,
+      endsAt: now + 300 * 24 * 60 * 60 * 1000,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: u,
+    },
+    { merge: true },
+  );
+
+  await batch.commit();
+  return { nextYearId: nextId, promoted: plan.counts.promote, graduated: plan.counts.graduate };
 }

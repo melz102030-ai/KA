@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { collection, documentId, limit, orderBy, query, where } from "firebase/firestore";
 import {
+  AcademicYear,
   Alert as AlertSchema,
   CarpoolRequest,
   CarpoolTrip,
@@ -69,6 +70,19 @@ export function useSchoolJoinCode(schoolId?: string): string | null {
     query(collection(db, paths.joinCodes()), where("schoolId", "==", schoolId), limit(1)),
   );
   return data[0]?.code ?? null;
+}
+
+/**
+ * The school year currently running.
+ *
+ * A school with no year document has never closed one — the app treats that as
+ * "the year is now", which is what an app in its first season actually is.
+ */
+export function useActiveYear(schoolId?: string): AcademicYear | null {
+  const { data } = useLiveQuery(schoolId ? `year:${schoolId}` : null, AcademicYear, () =>
+    query(collection(db, paths.years(schoolId!)), where("status", "==", "active"), limit(1)),
+  );
+  return data[0] ?? null;
 }
 
 /** Kids on a class roster (max 30 ids per query). */

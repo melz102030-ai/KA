@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { router } from "expo-router";
 import { Alert, View } from "react-native";
 import {
   MEMBERSHIP_STATUS_LABELS,
@@ -224,6 +225,16 @@ export default function SchoolConsole() {
           </AppText>
         </Card>
       )}
+
+      <AppText variant="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>
+        العام الدراسي
+      </AppText>
+      <Button
+        label="إنهاء العام وترفيع الطلاب"
+        icon="calendar-outline"
+        variant="secondary"
+        onPress={() => router.push("/tools/year-end")}
+      />
 
       <AppText variant="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>
         هيئة التدريس

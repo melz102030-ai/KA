@@ -7,6 +7,7 @@ export * from "./identity.js";
 export * from "./presence.js";
 export * from "./sun.js";
 export * from "./trust.js";
+export * from "./year.js";
 export * from "./attendanceCues.js";
 export * from "./callables.js";
 
@@ -19,6 +20,7 @@ export * from "./schema/messaging.js";
 export * from "./schema/carpool.js";
 export * from "./schema/wallet.js";
 export * from "./schema/safety.js";
+export * from "./schema/year.js";
 
 export * from "./watch/kt37.js";
 export * from "./watch/gateway.js";
