@@ -35,12 +35,20 @@ describe("users", () => {
 describe("kids", () => {
   it("a guardian creates a kid with themselves listed", async () => {
     await assertSucceeds(
-      setDoc(doc(asUser("p1"), "kids/k1"), { name: "Kid", guardianUids: ["p1"], akbadnaId: "AKB-2345-6789" }),
+      setDoc(doc(asUser("p1"), "kids/k1"), {
+        name: "Kid",
+        guardianUids: ["p1"],
+        akbadnaId: "AKB-2345-6789",
+      }),
     );
   });
   it("cannot create a kid guarded by someone else", async () => {
     await assertFails(
-      setDoc(doc(asUser("p1"), "kids/k2"), { name: "Kid", guardianUids: ["p2"], akbadnaId: "AKB-2345-6789" }),
+      setDoc(doc(asUser("p1"), "kids/k2"), {
+        name: "Kid",
+        guardianUids: ["p2"],
+        akbadnaId: "AKB-2345-6789",
+      }),
     );
   });
   it("a guardian cannot forge the live block", async () => {
@@ -63,12 +71,221 @@ describe("kids", () => {
 });
 
 describe("memberships", () => {
+  /** A school with s1_admin at its head, and a live teacher code for it. */
+  const seedSchool = () =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, "schools/s1"), { name: "مدرسة", adminUids: ["s1_admin"] });
+      await setDoc(doc(d, "joinCodes/TEACH1"), {
+        code: "TEACH1",
+        schoolId: "s1",
+        role: "teacher",
+        createdByUid: "s1_admin",
+        uses: 0,
+      });
+      await setDoc(doc(d, "joinCodes/PAR111"), {
+        code: "PAR111",
+        schoolId: "s1",
+        role: "parent",
+        createdByUid: "s1_admin",
+        uses: 0,
+      });
+    });
+
   it("a user creates only their own membership row", async () => {
     await assertSucceeds(
-      setDoc(doc(asUser("u1"), "memberships/m1"), { uid: "u1", schoolId: "s1", role: "parent" }),
+      setDoc(doc(asUser("u1"), "memberships/u1_s1_parent"), {
+        uid: "u1",
+        schoolId: "s1",
+        role: "parent",
+      }),
     );
     await assertFails(
-      setDoc(doc(asUser("u1"), "memberships/m2"), { uid: "u2", schoolId: "s1", role: "parent" }),
+      setDoc(doc(asUser("u1"), "memberships/u2_s1_parent"), {
+        uid: "u2",
+        schoolId: "s1",
+        role: "parent",
+      }),
+    );
+  });
+
+  /**
+   * The hole this closes: before, any signed-in user could write themselves a
+   * teacher row at any school and inherit a teacher's reach over its children.
+   */
+  it("refuses a teacher row that no code granted", async () => {
+    await seedSchool();
+    await assertFails(
+      setDoc(doc(asUser("stranger"), "memberships/stranger_s1_teacher"), {
+        uid: "stranger",
+        schoolId: "s1",
+        role: "teacher",
+      }),
+    );
+  });
+
+  it("accepts a teacher row backed by a live teacher code", async () => {
+    await seedSchool();
+    await assertSucceeds(
+      setDoc(doc(asUser("t9"), "memberships/t9_s1_teacher"), {
+        uid: "t9",
+        schoolId: "s1",
+        role: "teacher",
+        viaCode: "TEACH1",
+      }),
+    );
+  });
+
+  it("refuses a parent code used to buy a teacher row", async () => {
+    await seedSchool();
+    await assertFails(
+      setDoc(doc(asUser("p9"), "memberships/p9_s1_teacher"), {
+        uid: "p9",
+        schoolId: "s1",
+        role: "teacher",
+        viaCode: "PAR111",
+      }),
+    );
+  });
+
+  it("refuses another school's code", async () => {
+    await seedSchool();
+    await assertFails(
+      setDoc(doc(asUser("t8"), "memberships/t8_s2_teacher"), {
+        uid: "t8",
+        schoolId: "s2",
+        role: "teacher",
+        viaCode: "TEACH1",
+      }),
+    );
+  });
+
+  it("refuses a code that does not exist", async () => {
+    await seedSchool();
+    await assertFails(
+      setDoc(doc(asUser("t7"), "memberships/t7_s1_teacher"), {
+        uid: "t7",
+        schoolId: "s1",
+        role: "teacher",
+        viaCode: "MADEUP",
+      }),
+    );
+  });
+
+  /**
+   * The real onboarding sequence, in the order the app performs it: the school
+   * doc first, then the founder's own staff rows. They cannot share a batch —
+   * rules judge a batch against the state before it, so the school would not yet
+   * exist when the membership is checked.
+   */
+  it("accepts the founder's staff rows written after the school", async () => {
+    const d = asUser("founder");
+    await assertSucceeds(
+      setDoc(doc(d, "schools/new1"), { name: "مدرسة جديدة", adminUids: ["founder"] }),
+    );
+    await assertSucceeds(
+      setDoc(doc(d, "memberships/founder_new1_teacher"), {
+        uid: "founder",
+        schoolId: "new1",
+        role: "teacher",
+      }),
+    );
+  });
+
+  it("refuses a staff row for a school that does not exist", async () => {
+    await assertFails(
+      setDoc(doc(asUser("ghost"), "memberships/ghost_nowhere_teacher"), {
+        uid: "ghost",
+        schoolId: "nowhere",
+        role: "teacher",
+      }),
+    );
+  });
+
+  it("lets the school's own founder take an admin row without a code", async () => {
+    await seedSchool();
+    await assertSucceeds(
+      setDoc(doc(asUser("s1_admin"), "memberships/s1_admin_s1_school_admin"), {
+        uid: "s1_admin",
+        schoolId: "s1",
+        role: "school_admin",
+      }),
+    );
+  });
+
+  // Creating a parent row and then editing it into a teacher row is the same
+  // attack by another door.
+  it("cannot be promoted into a staff role by an update", async () => {
+    await seedSchool();
+    await assertSucceeds(
+      setDoc(doc(asUser("u5"), "memberships/u5_s1_parent"), {
+        uid: "u5",
+        schoolId: "s1",
+        role: "parent",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(asUser("u5"), "memberships/u5_s1_parent"), { role: "teacher" }, { merge: true }),
+    );
+  });
+});
+
+describe("academic years", () => {
+  const seed = () =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, "schools/s1"), { name: "مدرسة", adminUids: ["s1_admin"] });
+      await setDoc(doc(d, "memberships/t1_s1_teacher"), {
+        uid: "t1",
+        schoolId: "s1",
+        role: "teacher",
+      });
+    });
+
+  it("the school's staff close the year", async () => {
+    await seed();
+    await assertSucceeds(
+      setDoc(doc(asUser("t1"), "schools/s1/years/1447"), { id: "1447", status: "active" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(asUser("t1"), "schools/s1/years/1447/enrolments/k1"), {
+        kidId: "k1",
+        grade: 5,
+        status: "active",
+      }),
+    );
+  });
+
+  /** A parent must not be able to promote their own child. */
+  it("a parent may read the record but never write it", async () => {
+    await seed();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "schools/s1/years/1447/enrolments/k1"), {
+        kidId: "k1",
+        grade: 5,
+      });
+    });
+    await assertSucceeds(getDoc(doc(asUser("p1"), "schools/s1/years/1447/enrolments/k1")));
+    await assertFails(
+      setDoc(
+        doc(asUser("p1"), "schools/s1/years/1447/enrolments/k1"),
+        { grade: 12 },
+        { merge: true },
+      ),
+    );
+  });
+
+  it("staff at another school are outsiders here", async () => {
+    await seed();
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "memberships/t2_s2_teacher"), {
+        uid: "t2",
+        schoolId: "s2",
+        role: "teacher",
+      });
+    });
+    await assertFails(
+      setDoc(doc(asUser("t2"), "schools/s1/years/1447"), { id: "1447", status: "archived" }),
     );
   });
 });

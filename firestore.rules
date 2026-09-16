@@ -28,6 +28,34 @@ service cloud.firestore {
     function teacherOfClass(schoolId, classId) {
       return signedIn() && request.auth.uid in classData(schoolId, classId).teacherIds;
     }
+    function schoolData(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)).data;
+    }
+    function isSchoolAdmin(schoolId) {
+      return signedIn() && request.auth.uid in schoolData(schoolId).adminUids;
+    }
+    // Membership ids are uid_schoolId_role by construction, so standing can be
+    // checked with an exists() instead of a query rules cannot run.
+    function isStaff(schoolId) {
+      return signedIn() && (
+        exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + schoolId + '_teacher'))
+        || exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + schoolId + '_school_admin'))
+      );
+    }
+    function codeData(code) { return get(/databases/$(database)/documents/joinCodes/$(code)).data; }
+    /**
+     * A staff row has to name the code that granted it, and that code has to be
+     * real, belong to this school and grant this exact role. Without this the
+     * invite chain is only enforced in the app, and anyone writing to Firestore
+     * directly could make themselves a teacher at any school in the country.
+     */
+    function backedByCode(m) {
+      return 'viaCode' in m
+        && exists(/databases/$(database)/documents/joinCodes/$(m.viaCode))
+        && codeData(m.viaCode).schoolId == m.schoolId
+        && codeData(m.viaCode).role == m.role;
+    }
+
     // A paired KT37 authenticates with a custom token { role:"device", watchId }.
     function isDevice(watchId) {
       return signedIn() && request.auth.token.role == 'device' && request.auth.token.watchId == watchId;
@@ -43,9 +71,20 @@ service cloud.firestore {
     // Members create only their OWN membership rows.
     match /memberships/{id} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      // Parents may enrol themselves; staff may not. A teacher or admin row is
+      // accepted only from the person who created the school, or from someone
+      // holding a code that grants that very role at that very school.
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && (request.resource.data.role == 'parent'
+            || request.resource.data.role == 'driver'
+            || isSchoolAdmin(request.resource.data.schoolId)
+            || backedByCode(request.resource.data));
       allow update: if signedIn() && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        // The role is fixed at redemption; editing it would walk around the
+        // check above.
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.schoolId == resource.data.schoolId;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
@@ -72,6 +111,23 @@ service cloud.firestore {
           || (request.auth.uid in get(/databases/$(database)/documents/schools/$(schoolId)).data.adminUids)
           || changed(['studentIds', 'updatedAt']);
         allow delete: if false;
+      }
+
+      /**
+       * The year, and each child's place in it.
+       *
+       * Readable by anyone signed in — a parent asking about a year that ended
+       * is the whole point of keeping these — but written only by the school's
+       * own staff, because this is where promotion and graduation are recorded.
+       */
+      match /years/{yearId} {
+        allow read: if signedIn();
+        allow write: if isSchoolAdmin(schoolId) || isStaff(schoolId);
+
+        match /enrolments/{kidId} {
+          allow read: if signedIn();
+          allow write: if isSchoolAdmin(schoolId) || isStaff(schoolId);
+        }
       }
 
       match /attendanceSessions/{sessionId} {

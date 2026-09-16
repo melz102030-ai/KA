@@ -36,6 +36,12 @@ export const Membership = Audit.extend({
   kidIds: z.array(z.string()).default([]),
   classIds: z.array(z.string()).default([]),
   invitedBy: z.string().optional(),
+  /**
+   * The join code this membership was redeemed with. Staff rows must carry one:
+   * the security rules read the code back and refuse a teacher row that no live
+   * code granted.
+   */
+  viaCode: z.string().optional(),
   /** Standing with the school. Only "active" grants anything. */
   status: MembershipStatus.default("active"),
   acceptedAt: EpochMillis.optional(),

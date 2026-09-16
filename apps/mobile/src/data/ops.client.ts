@@ -140,9 +140,27 @@ export async function createSchoolWithClass(
     createdAt: ts(),
     updatedAt: ts(),
   });
+  batch.set(
+    doc(db, paths.user(u)),
+    { roles: arrayUnion("teacher", "school_admin"), onboardedAt: ts(), updatedAt: ts() },
+    { merge: true },
+  );
+  await batch.commit();
+
+  /**
+   * The staff rows go in a second write, after the school exists.
+   *
+   * The rules accept a teacher or admin row only from someone already listed on
+   * the school — and a batch is judged against the state before it, so inside
+   * the batch above the school the founder is admin of does not exist yet. The
+   * cost of splitting is a school with no staff row if this fails; retrying the
+   * same ids repairs it, and the alternative is loosening the rule that keeps
+   * strangers from writing themselves into staff.
+   */
+  const staff = writeBatch(db);
   for (const role of ["teacher", "school_admin"] as const) {
     const id = membershipId(u, schoolRef.id, role);
-    batch.set(doc(db, paths.membership(id)), {
+    staff.set(doc(db, paths.membership(id)), {
       id,
       uid: u,
       schoolId: schoolRef.id,
@@ -154,12 +172,7 @@ export async function createSchoolWithClass(
       updatedAt: ts(),
     });
   }
-  batch.set(
-    doc(db, paths.user(u)),
-    { roles: arrayUnion("teacher", "school_admin"), onboardedAt: ts(), updatedAt: ts() },
-    { merge: true },
-  );
-  await batch.commit();
+  await staff.commit();
   return { schoolId: schoolRef.id, classId: classRef.id, joinCode: code };
 }
 
@@ -206,6 +219,11 @@ export async function joinByCode(
     role,
     classIds: c.classId ? [c.classId] : [],
     kidIds: input.kidIds,
+    // The code that bought this membership. The rules read it back and refuse
+    // any staff row that cannot name a live code granting exactly this role —
+    // otherwise the check above is only advice, and anyone writing to Firestore
+    // directly could hand themselves a teacher badge at any school.
+    viaCode: input.code,
     acceptedAt: ts(),
     createdAt: ts(),
     updatedAt: ts(),
