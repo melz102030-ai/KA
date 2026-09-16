@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { AppText, Badge, Icon, type IconName, Screen } from "@/components";
+import { router } from "expo-router";
+import { AppText, Badge, Button, Icon, type IconName, Screen } from "@/components";
 import { useClass, useKids, useSchedule } from "@/data/hooks";
 import { clockToMinutes, minutesOfDay } from "@/lib/time";
 import { color, space } from "@/theme";
@@ -26,6 +27,13 @@ export default function ScheduleScreen() {
 
   return (
     <Screen>
+      <Button
+        label="تعديل الجدول"
+        icon="create-outline"
+        variant="secondary"
+        onPress={() => router.push("/tools/schedule-edit")}
+        style={{ marginTop: space.md }}
+      />
       <View style={{ paddingTop: space.md }}>
         {periods.map((p, i) => {
           const active = m >= clockToMinutes(p.start) && m < clockToMinutes(p.end);

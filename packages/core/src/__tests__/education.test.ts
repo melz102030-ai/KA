@@ -10,6 +10,8 @@ import {
   segmentForGender,
   segmentsPresent,
   stageOfGrade,
+  validateSchedule,
+  DEFAULT_PERIODS,
 } from "../education.js";
 
 describe("stages", () => {
@@ -142,5 +144,88 @@ describe("segmentsPresent", () => {
 
   it("is empty when nothing is recorded, so no filter is offered", () => {
     expect(segmentsPresent([{ id: "a" }])).toEqual([]);
+  });
+});
+
+describe("validateSchedule", () => {
+  const ok = [
+    { name: "الأولى", start: "07:00", end: "07:45" },
+    { name: "الثانية", start: "07:45", end: "08:30" },
+  ];
+
+  it("passes a sound timetable", () => {
+    expect(validateSchedule(ok)).toEqual([]);
+  });
+
+  it("refuses an empty one", () => {
+    expect(validateSchedule([])).toEqual([{ kind: "empty" }]);
+  });
+
+  it("catches a period that ends before it starts", () => {
+    const p = validateSchedule([{ name: "الأولى", start: "08:00", end: "07:00" }]);
+    expect(p).toContainEqual({ kind: "backwards", index: 0 });
+  });
+
+  it("catches a zero-length period", () => {
+    const p = validateSchedule([{ name: "الأولى", start: "08:00", end: "08:00" }]);
+    expect(p).toContainEqual({ kind: "backwards", index: 0 });
+  });
+
+  it("catches a malformed clock", () => {
+    for (const t of ["7:00", "25:00", "07:60", "0700", ""]) {
+      expect(validateSchedule([{ name: "أ", start: t, end: "09:00" }])).toContainEqual({
+        kind: "bad-time",
+        index: 0,
+      });
+    }
+  });
+
+  it("catches a period with no name", () => {
+    expect(validateSchedule([{ name: "  ", start: "07:00", end: "08:00" }])).toContainEqual({
+      kind: "no-name",
+      index: 0,
+    });
+  });
+
+  /**
+   * The one that matters: currentPeriod returns the FIRST period containing the
+   * moment, so an overlap makes "الحصة الحالية" depend on array order.
+   */
+  it("catches overlapping periods", () => {
+    const p = validateSchedule([
+      { name: "الأولى", start: "07:00", end: "08:00" },
+      { name: "الثانية", start: "07:30", end: "08:30" },
+    ]);
+    expect(p).toContainEqual({ kind: "overlap", index: 1 });
+  });
+
+  it("allows periods that merely touch", () => {
+    expect(validateSchedule(ok)).toEqual([]);
+  });
+
+  // A teacher who types rows out of order should be told about a real clash,
+  // not about their typing order.
+  it("judges overlap by the clock, not by row order", () => {
+    const outOfOrder = [
+      { name: "الثانية", start: "08:00", end: "09:00" },
+      { name: "الأولى", start: "07:00", end: "08:00" },
+    ];
+    expect(validateSchedule(outOfOrder)).toEqual([]);
+  });
+
+  it("reports every problem at once, not just the first", () => {
+    const messy = [
+      { name: "", start: "07:00", end: "06:00" },
+      { name: "ب", start: "bad", end: "09:00" },
+    ];
+    const p = validateSchedule(messy);
+    expect(p.length).toBeGreaterThanOrEqual(3);
+    expect(p).toContainEqual({ kind: "no-name", index: 0 });
+    expect(p).toContainEqual({ kind: "backwards", index: 0 });
+    expect(p).toContainEqual({ kind: "bad-time", index: 1 });
+  });
+
+  it("ships a default day that is itself valid", () => {
+    expect(validateSchedule(DEFAULT_PERIODS)).toEqual([]);
   });
 });

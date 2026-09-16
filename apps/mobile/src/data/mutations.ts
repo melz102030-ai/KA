@@ -7,6 +7,7 @@ import { arrayUnion, collection, doc, setDoc } from "firebase/firestore";
 import {
   canInvite,
   cueForAttendance,
+  validateSchedule,
   paths,
   rewardCue,
   type AttendanceStatus,
@@ -321,6 +322,49 @@ export async function verifySchool(schoolId: string): Promise<void> {
   await setDoc(
     doc(db, paths.school(schoolId)),
     { status: "verified", verifiedAt: Date.now(), verifiedBy: u, updatedAt: Date.now() },
+    { merge: true },
+  );
+}
+
+/**
+ * Writes the class timetable, applied to every school day.
+ *
+ * Firestore keys the schedule by weekday so a school can run different days
+ * differently; almost none do, so the editor writes one day to all of them and
+ * the shape stays open for the exception.
+ */
+export async function saveSchedule(input: {
+  schoolId: string;
+  classId: string;
+  periods: { name: string; start: string; end: string }[];
+  weekDays: number[];
+}): Promise<void> {
+  const problems = validateSchedule(input.periods);
+  if (problems.length) throw new Error("الجدول يحتوي على أخطاء");
+
+  const day = input.periods
+    .slice()
+    .sort((a, b) => a.start.localeCompare(b.start))
+    .map((p, index) => ({
+      index,
+      name: p.name.trim(),
+      start: p.start,
+      end: p.end,
+      kind: /استراحة/.test(p.name)
+        ? "break"
+        : /طابور/.test(p.name)
+          ? "assembly"
+          : /انصراف/.test(p.name)
+            ? "dismissal"
+            : "lesson",
+    }));
+
+  const schedule: Record<string, typeof day> = {};
+  for (const d of input.weekDays) schedule[String(d)] = day;
+
+  await setDoc(
+    doc(db, paths.class(input.schoolId, input.classId)),
+    { schedule, updatedAt: Date.now() },
     { merge: true },
   );
 }

@@ -15,6 +15,7 @@ export default function ToolsLayout() {
       <Stack.Screen name="add-kid" options={{ title: "إضافة ابن" }} />
       <Stack.Screen name="school" options={{ title: "إدارة المدرسة" }} />
       <Stack.Screen name="schedule" options={{ title: "جدول الحصص" }} />
+      <Stack.Screen name="schedule-edit" options={{ title: "تعديل الجدول" }} />
       <Stack.Screen name="health" options={{ title: "الصحة والحيويات" }} />
       <Stack.Screen name="wallet" options={{ title: "المحفظة المدرسية" }} />
       <Stack.Screen name="akbid" options={{ title: "معرّف أكبادنا" }} />

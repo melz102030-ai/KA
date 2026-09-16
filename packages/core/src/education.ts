@@ -167,3 +167,78 @@ export function segmentsPresent(children: ChildLike[]): SchoolSegment[] {
   for (const c of children) if (c.gender) found.add(segmentForGender(c.gender));
   return (["boys", "girls"] as const).filter((s) => found.has(s));
 }
+
+/* ── Timetables ──────────────────────────────────────────────────────────── */
+
+export type PeriodDraft = { name: string; start: string; end: string };
+
+export type ScheduleProblem =
+  | { kind: "empty" }
+  | { kind: "bad-time"; index: number }
+  | { kind: "backwards"; index: number }
+  | { kind: "overlap"; index: number }
+  | { kind: "no-name"; index: number };
+
+const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+
+export const SCHEDULE_MESSAGES: Record<ScheduleProblem["kind"], string> = {
+  empty: "أضف حصة واحدة على الأقل",
+  "bad-time": "الوقت بصيغة ٢٤ ساعة مثل 07:30",
+  backwards: "وقت النهاية قبل البداية",
+  overlap: "هذه الحصة تتداخل مع التي قبلها",
+  "no-name": "اكتب اسم الحصة",
+};
+
+/**
+ * Checks a timetable before it is saved.
+ *
+ * Overlap is the one that matters. `currentPeriod` returns the first period
+ * containing the moment, so two that overlap make "الحصة الحالية" depend on
+ * array order — the teacher would see one period while the class sits in
+ * another, and nothing would look broken enough to report.
+ *
+ * Returns every problem, not the first, so a teacher fixes the whole form in
+ * one pass instead of being sent back repeatedly.
+ */
+export function validateSchedule(periods: PeriodDraft[]): ScheduleProblem[] {
+  if (!periods.length) return [{ kind: "empty" }];
+
+  const problems: ScheduleProblem[] = [];
+  periods.forEach((p, i) => {
+    if (!p.name.trim()) problems.push({ kind: "no-name", index: i });
+    if (!CLOCK.test(p.start) || !CLOCK.test(p.end)) {
+      problems.push({ kind: "bad-time", index: i });
+      return;
+    }
+    if (toMinutes(p.end) <= toMinutes(p.start)) problems.push({ kind: "backwards", index: i });
+  });
+
+  // Compare in clock order, so a teacher who types the rows out of sequence is
+  // told about a real clash rather than about their typing order.
+  const ordered = periods
+    .map((p, index) => ({ ...p, index }))
+    .filter((p) => CLOCK.test(p.start) && CLOCK.test(p.end))
+    .sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
+
+  for (let i = 1; i < ordered.length; i++) {
+    if (toMinutes(ordered[i]!.start) < toMinutes(ordered[i - 1]!.end)) {
+      problems.push({ kind: "overlap", index: ordered[i]!.index });
+    }
+  }
+  return problems;
+}
+
+/** A starting point a teacher edits, rather than an empty form. */
+export const DEFAULT_PERIODS: PeriodDraft[] = [
+  { name: "الطابور", start: "06:45", end: "07:00" },
+  { name: "الحصة الأولى", start: "07:00", end: "07:45" },
+  { name: "الحصة الثانية", start: "07:45", end: "08:30" },
+  { name: "استراحة", start: "08:30", end: "08:50" },
+  { name: "الحصة الثالثة", start: "08:50", end: "09:35" },
+  { name: "الحصة الرابعة", start: "09:35", end: "10:20" },
+  { name: "استراحة كبرى", start: "10:20", end: "10:50" },
+  { name: "الحصة الخامسة", start: "10:50", end: "11:35" },
+  { name: "الحصة السادسة", start: "11:35", end: "12:20" },
+  { name: "الانصراف", start: "12:20", end: "12:30" },
+];
