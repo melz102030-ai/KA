@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import { router } from "expo-router";
 import {
   DEFAULT_PERIODS,
@@ -66,20 +67,20 @@ export default function ScheduleEdit() {
   const save = async () => {
     if (problems.length) return;
     if (!days.length) {
-      Alert.alert("اختر أيام الدراسة", "حدّد يومًا واحدًا على الأقل.");
+      showAlert("اختر أيام الدراسة", "حدّد يومًا واحدًا على الأقل.");
       return;
     }
     setBusy(true);
     try {
       if (isDemo) {
-        Alert.alert("وضع تجريبي", "سيُحفظ الجدول عند الدخول بحساب حقيقي.");
+        showAlert("وضع تجريبي", "سيُحفظ الجدول عند الدخول بحساب حقيقي.");
       } else if (schoolId && classId) {
         await saveSchedule({ schoolId, classId, periods, weekDays: days });
-        Alert.alert("حُفظ الجدول", `طُبِّق على ${arabicCount(days.length, NOUNS.schoolDay)}.`);
+        showAlert("حُفظ الجدول", `طُبِّق على ${arabicCount(days.length, NOUNS.schoolDay)}.`);
       }
       router.back();
     } catch (e) {
-      Alert.alert("تعذّر الحفظ", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر الحفظ", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(false);
     }

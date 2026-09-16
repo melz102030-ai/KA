@@ -6,7 +6,10 @@
 import { arrayUnion, collection, doc, setDoc, writeBatch } from "firebase/firestore";
 import {
   CLOSE_YEAR_MESSAGES,
+  EVIDENCE_MESSAGES,
   canInvite,
+  canSetSchoolStatus,
+  evidenceProblems,
   closeYearProblem,
   continuesNextYear,
   cueForAttendance,
@@ -24,6 +27,8 @@ import {
   type RewardGlyph,
   type Role,
   type RolloverStudent,
+  type SchoolEvidence,
+  type SchoolStatus,
   type YearStatus,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
@@ -324,13 +329,72 @@ export async function decideEnrolment(input: {
   }
 }
 
-/** Marks a school as vouched for. Only the operator's own account may do this. */
-export async function verifySchool(schoolId: string): Promise<void> {
+/**
+ * The school hands its file in for review.
+ *
+ * The evidence is checked here before the status moves, so a half-filled form
+ * never reaches the operator's queue — and the security rules refuse the move
+ * anyway if it comes from anyone but the school's own admin.
+ */
+export async function submitSchoolVerification(input: {
+  schoolId: string;
+  evidence: SchoolEvidence;
+}): Promise<void> {
   const u = auth.currentUser?.uid;
   if (!u) throw new Error("sign-in required");
+
+  const problems = evidenceProblems(input.evidence);
+  if (problems.length) throw new Error(EVIDENCE_MESSAGES[problems[0]!]);
+
+  const e = input.evidence;
   await setDoc(
-    doc(db, paths.school(schoolId)),
-    { status: "verified", verifiedAt: Date.now(), verifiedBy: u, updatedAt: Date.now() },
+    doc(db, paths.school(input.schoolId)),
+    {
+      name: e.name!.trim(),
+      licenceNo: e.licenceNo!.trim(),
+      headTeacherName: e.headTeacherName!.trim(),
+      headTeacherNationalId: e.headTeacherNationalId!.trim(),
+      phone: e.phone!.trim(),
+      location: e.location,
+      status: "submitted",
+      submittedAt: Date.now(),
+      submittedBy: u,
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+}
+
+/**
+ * The operator's answer.
+ *
+ * Only an account on config/operators gets past the rules here, whatever this
+ * function is asked to do — the check below is for the message, not the
+ * security.
+ */
+export async function decideSchoolVerification(input: {
+  schoolId: string;
+  from: SchoolStatus;
+  to: SchoolStatus;
+  reason?: string;
+}): Promise<void> {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+  if (
+    !canSetSchoolStatus({ from: input.from, to: input.to, isOperator: true, isSchoolAdmin: false })
+  ) {
+    throw new Error("لا يمكن نقل المدرسة إلى هذه الحالة");
+  }
+
+  await setDoc(
+    doc(db, paths.school(input.schoolId)),
+    {
+      status: input.to,
+      rejectionReason: input.to === "rejected" ? (input.reason ?? "") : "",
+      verifiedAt: input.to === "verified" ? Date.now() : null,
+      verifiedBy: input.to === "verified" ? u : null,
+      updatedAt: Date.now(),
+    },
     { merge: true },
   );
 }

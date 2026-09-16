@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import { router, type Href } from "expo-router";
 import {
   AppText,
@@ -16,7 +17,7 @@ import { usePrefs } from "@/lib/prefs";
 import { EditableAvatar } from "@/components/AvatarPicker";
 import { fmtDateParts, type CalendarPref } from "@/lib/time";
 import { seedDemoSchool } from "@/data/mutations";
-import { useMemberships, useSchoolJoinCode } from "@/data/hooks";
+import { useIsOperator, useMemberships, useSchoolJoinCode } from "@/data/hooks";
 import { space } from "@/theme";
 
 const CALENDARS: { id: CalendarPref; label: string }[] = [
@@ -91,6 +92,7 @@ const TOOLS: Tool[] = [
 ];
 
 export default function More() {
+  const isOperator = useIsOperator();
   const { profile, signOut, isDemo } = useAuth();
   const { prefs, setCalendar } = usePrefs();
   const calendarPreview = fmtDateParts(new Date(), prefs.calendar);
@@ -103,9 +105,9 @@ export default function More() {
     setSeeding(true);
     try {
       const res = await seedDemoSchool();
-      Alert.alert("تم", `أُنشئت مدرسة وفصل و${res.kidIds.length} طلاب مرتبطين بحسابك.`);
+      showAlert("تم", `أُنشئت مدرسة وفصل و${res.kidIds.length} طلاب مرتبطين بحسابك.`);
     } catch (e) {
-      Alert.alert("تعذّر", e instanceof Error ? e.message : "تأكد من تفعيل Firestore.");
+      showAlert("تعذّر", e instanceof Error ? e.message : "تأكد من تفعيل Firestore.");
     } finally {
       setSeeding(false);
     }
@@ -156,7 +158,7 @@ export default function More() {
           <SectionHeader>رمز انضمام أولياء الأمور</SectionHeader>
           <Card
             onPress={() =>
-              Alert.alert("رمز الانضمام", `${joinCode}\n\nشاركه مع أولياء أمور فصلك للانضمام.`)
+              showAlert("رمز الانضمام", `${joinCode}\n\nشاركه مع أولياء أمور فصلك للانضمام.`)
             }
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
@@ -166,6 +168,20 @@ export default function More() {
               <AppText variant="label">نسخ / مشاركة</AppText>
             </View>
           </Card>
+        </>
+      )}
+
+      {isOperator && (
+        <>
+          <SectionHeader>مشغّل النظام</SectionHeader>
+          <RowGroup>
+            <ListRow
+              icon="shield-checkmark-outline"
+              title="لوحة المشغّل"
+              subtitle="طلبات توثيق المدارس"
+              onPress={() => router.push("/tools/operator")}
+            />
+          </RowGroup>
         </>
       )}
 
@@ -181,6 +197,27 @@ export default function More() {
           />
         ))}
       </RowGroup>
+
+      {!isDemo && profile?.uid && (
+        <>
+          <SectionHeader>معرّف حسابك</SectionHeader>
+          <Card
+            onPress={() =>
+              showAlert(
+                "معرّف حسابك",
+                `${profile.uid}\n\nيُستخدم لإدراج حسابك في قائمة مشغّلي النظام من لوحة Firebase: config/operators ← uids`,
+              )
+            }
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <AppText variant="mono" style={{ flex: 1, fontSize: 13 }} numberOfLines={1}>
+                {profile.uid}
+              </AppText>
+              <AppText variant="label">عرض</AppText>
+            </View>
+          </Card>
+        </>
+      )}
 
       {!isDemo && (
         <>

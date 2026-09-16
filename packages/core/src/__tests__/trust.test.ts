@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  EVIDENCE_MESSAGES,
   canApproveEnrolment,
   canInvite,
-  canVerifySchool,
+  canSetSchoolStatus,
+  evidenceIsComplete,
+  evidenceProblems,
   enrolmentIsActive,
   enrolmentIsClosed,
   membershipIsActive,
@@ -49,9 +52,15 @@ describe("who admits a child, and who verifies a school", () => {
   });
 
   it("a teacher cannot verify their own school", () => {
-    expect(canVerifySchool("teacher")).toBe(false);
-    expect(canVerifySchool("parent")).toBe(false);
-    expect(canVerifySchool("school_admin")).toBe(true);
+    // Verification is not a power any role carries; see canSetSchoolStatus.
+    expect(
+      canSetSchoolStatus({
+        from: "submitted",
+        to: "verified",
+        isOperator: false,
+        isSchoolAdmin: true,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -108,17 +117,25 @@ describe("redemptionProblem", () => {
   });
 
   it("refuses any code for a suspended school", () => {
-    expect(redemptionProblem({ ...base, schoolStatus: "suspended" })).toBe("school-suspended");
-    expect(redemptionProblem({ ...base, schoolStatus: "pending" })).toBeNull();
+    expect(redemptionProblem({ ...base, schoolStatus: "suspended" })).toBe("school-inactive");
+    // A code for a school that has not been verified leads nowhere either.
+    expect(redemptionProblem({ ...base, schoolStatus: "pending" })).toBe("school-inactive");
+    expect(redemptionProblem({ ...base, schoolStatus: "verified" })).toBeNull();
   });
 });
 
 describe("schoolCapabilities", () => {
-  // A real class should not wait on paperwork to take the register.
-  it("lets an unverified school run, but not grow", () => {
+  /**
+   * The policy this app chose: an unverified school does not run at all.
+   * It costs a real school its first days, and it is the reason nobody can
+   * raise a school out of thin air and start gathering other people's children
+   * into it.
+   */
+  it("stops an unverified school entirely, and tells it whose move it is", () => {
     const c = schoolCapabilities("pending");
-    expect(c.canOperate).toBe(true);
+    expect(c.canOperate).toBe(false);
     expect(c.canRecruit).toBe(false);
+    expect(c.canSubmit).toBe(true);
     expect(c.notice).toBeTruthy();
   });
 
@@ -159,5 +176,136 @@ describe("status helpers", () => {
     expect(enrolmentIsClosed("rejected")).toBe(true);
     expect(enrolmentIsClosed("pending")).toBe(false);
     expect(enrolmentIsClosed("active")).toBe(false);
+  });
+});
+
+describe("school capabilities", () => {
+  it("lets nothing run until the school is verified", () => {
+    for (const s of ["pending", "submitted", "rejected", "suspended"] as const) {
+      expect(schoolCapabilities(s).canOperate).toBe(false);
+      expect(schoolCapabilities(s).canRecruit).toBe(false);
+    }
+    expect(schoolCapabilities("verified").canOperate).toBe(true);
+    expect(schoolCapabilities("verified").canRecruit).toBe(true);
+  });
+
+  /** The school must always be able to tell whose move it is. */
+  it("offers the form only when the school is the one holding things up", () => {
+    expect(schoolCapabilities("pending").canSubmit).toBe(true);
+    expect(schoolCapabilities("rejected").canSubmit).toBe(true);
+    expect(schoolCapabilities("submitted").canSubmit).toBe(false);
+    expect(schoolCapabilities("suspended").canSubmit).toBe(false);
+  });
+
+  it("says something useful in every state but the verified one", () => {
+    expect(schoolCapabilities("verified").notice).toBeNull();
+    for (const s of ["pending", "submitted", "rejected", "suspended"] as const) {
+      expect(schoolCapabilities(s).notice!.length).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe("evidenceProblems", () => {
+  const good = {
+    name: "متوسطة النور",
+    licenceNo: "123456",
+    headTeacherName: "سعد بن محمد الحربي",
+    headTeacherNationalId: "1999999996",
+    phone: "+966112345678",
+    location: { lat: 24.7, lng: 46.7 },
+  };
+
+  it("passes a complete file", () => {
+    expect(evidenceProblems(good)).toEqual([]);
+    expect(evidenceIsComplete(good)).toBe(true);
+  });
+
+  it("reports every missing field at once, not one at a time", () => {
+    expect(evidenceProblems({}).length).toBe(6);
+  });
+
+  it("checks the head teacher's id by its checksum", () => {
+    expect(evidenceProblems({ ...good, headTeacherNationalId: "1999999999" })).toContain(
+      "bad-head-id",
+    );
+  });
+
+  it("takes a school landline as readily as a mobile", () => {
+    expect(evidenceProblems({ ...good, phone: "+966112345678" })).toEqual([]);
+    expect(evidenceProblems({ ...good, phone: "+966512345678" })).toEqual([]);
+    expect(evidenceProblems({ ...good, phone: "0112345678" })).toContain("bad-phone");
+    expect(evidenceProblems({ ...good, phone: "+971512345678" })).toContain("bad-phone");
+  });
+
+  it("refuses a licence number with letters or punctuation", () => {
+    expect(evidenceProblems({ ...good, licenceNo: "12-34" })).toContain("bad-licence");
+    expect(evidenceProblems({ ...good, licenceNo: "AB123" })).toContain("bad-licence");
+    expect(evidenceProblems({ ...good, licenceNo: "12" })).toContain("bad-licence");
+  });
+
+  it("insists on a location, since it is the one thing that cannot be typed from a sofa", () => {
+    expect(evidenceProblems({ ...good, location: undefined })).toContain("no-location");
+  });
+
+  it("has an Arabic message for every problem it can report", () => {
+    for (const p of evidenceProblems({})) expect(EVIDENCE_MESSAGES[p].length).toBeGreaterThan(5);
+  });
+});
+
+describe("canSetSchoolStatus", () => {
+  const admin = { isOperator: false, isSchoolAdmin: true, evidenceComplete: true };
+
+  it("lets a school hand in a complete file for review", () => {
+    expect(canSetSchoolStatus({ from: "pending", to: "submitted", ...admin })).toBe(true);
+    expect(canSetSchoolStatus({ from: "rejected", to: "submitted", ...admin })).toBe(true);
+  });
+
+  it("refuses an incomplete file", () => {
+    expect(
+      canSetSchoolStatus({ from: "pending", to: "submitted", ...admin, evidenceComplete: false }),
+    ).toBe(false);
+  });
+
+  /**
+   * The rule the chain rests on: the school's own admin cannot stamp their
+   * school as verified, which is precisely what the app allowed before.
+   */
+  it("never lets a school verify itself", () => {
+    expect(canSetSchoolStatus({ from: "pending", to: "verified", ...admin })).toBe(false);
+    expect(canSetSchoolStatus({ from: "submitted", to: "verified", ...admin })).toBe(false);
+  });
+
+  it("never lets a school lift its own suspension", () => {
+    expect(canSetSchoolStatus({ from: "suspended", to: "verified", ...admin })).toBe(false);
+    expect(canSetSchoolStatus({ from: "suspended", to: "submitted", ...admin })).toBe(false);
+  });
+
+  it("lets the operator decide either way, and withdraw a verification", () => {
+    const op = { isOperator: true, isSchoolAdmin: false };
+    expect(canSetSchoolStatus({ from: "submitted", to: "verified", ...op })).toBe(true);
+    expect(canSetSchoolStatus({ from: "submitted", to: "rejected", ...op })).toBe(true);
+    expect(canSetSchoolStatus({ from: "verified", to: "suspended", ...op })).toBe(true);
+  });
+
+  it("is not a licence for a no-op write", () => {
+    expect(
+      canSetSchoolStatus({
+        from: "verified",
+        to: "verified",
+        isOperator: true,
+        isSchoolAdmin: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("refuses a stranger outright", () => {
+    expect(
+      canSetSchoolStatus({
+        from: "submitted",
+        to: "verified",
+        isOperator: false,
+        isSchoolAdmin: false,
+      }),
+    ).toBe(false);
   });
 });

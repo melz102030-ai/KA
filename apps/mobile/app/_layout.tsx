@@ -17,6 +17,7 @@ import { Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import { AuthProvider } from "@/lib/auth";
 import { PrefsProvider } from "@/lib/prefs";
 import { AvatarsProvider } from "@/lib/avatars";
+import { DialogHost } from "@/lib/dialog";
 import { color } from "@/theme";
 
 // Arabic-first: lay everything out right-to-left.
@@ -56,6 +57,8 @@ export default function RootLayout() {
             <AuthProvider>
               <StatusBar style="dark" />
               <Slot />
+              {/* Above every screen: react-native-web has no working Alert. */}
+              <DialogHost />
             </AuthProvider>
           </AvatarsProvider>
         </PrefsProvider>

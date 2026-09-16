@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import {
   SEGMENT_LABELS,
   classLabel,
@@ -83,21 +84,20 @@ export default function Home() {
   const next = nextPeriod(schedule, now);
   const secsToNext = next ? secondsUntilClock(next.start, now) : null;
 
-  const ping = (k: Kid) =>
-    Alert.alert("إرسال نداء", `سيتم تنبيه ساعة ${k.name.split(" ")[0]} الآن.`);
+  const ping = (k: Kid) => showAlert("إرسال نداء", `سيتم تنبيه ساعة ${k.name.split(" ")[0]} الآن.`);
   const locate = (k: Kid) =>
-    Alert.alert("الموقع", k.live.location ? "عرض آخر موقع معروف." : "لا يوجد موقع محدّث بعد.");
+    showAlert("الموقع", k.live.location ? "عرض آخر موقع معروف." : "لا يوجد موقع محدّث بعد.");
   const sos = async (k: Kid) => {
     const loc = k.live.location ?? { lat: 24.7136, lng: 46.6753 };
     try {
       if (isDemo) {
-        Alert.alert("استغاثة", "وضع تجريبي — لم يُرفع تنبيه.");
+        showAlert("استغاثة", "وضع تجريبي — لم يُرفع تنبيه.");
         return;
       }
       await raiseKidSos(k.id, loc);
-      Alert.alert("استغاثة", "تم رفع تنبيه الاستغاثة.");
+      showAlert("استغاثة", "تم رفع تنبيه الاستغاثة.");
     } catch (e) {
-      Alert.alert("استغاثة", e instanceof Error ? e.message : "تعذّر الرفع.");
+      showAlert("استغاثة", e instanceof Error ? e.message : "تعذّر الرفع.");
     }
   };
 

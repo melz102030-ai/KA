@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import {
   MEMBERSHIP_STATUS_LABELS,
   SCHOOL_STATUS_LABELS,
@@ -67,7 +68,7 @@ export default function SchoolConsole() {
       });
       setCode({ value, grants });
     } catch (e) {
-      Alert.alert("تعذّر إصدار الدعوة", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر إصدار الدعوة", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(null);
     }
@@ -162,6 +163,15 @@ export default function SchoolConsole() {
           </View>
         ))}
       </View>
+
+      {caps.canSubmit && (
+        <Button
+          label={status === "rejected" ? "صحّح البيانات وأعد الإرسال" : "أرسل بيانات التوثيق"}
+          icon="shield-checkmark-outline"
+          onPress={() => router.push("/tools/verify-school")}
+          style={{ marginBottom: space.md }}
+        />
+      )}
 
       <AppText variant="label" style={{ marginBottom: space.sm }}>
         دعوة إلى المدرسة

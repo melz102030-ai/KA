@@ -109,6 +109,9 @@ export async function createSchoolWithClass(
   batch.set(schoolRef, {
     id: schoolRef.id,
     name: input.schoolName,
+    // Written explicitly, not left to a default: the rules require a school
+    // to be born unverified, and a missing field is not the string "pending".
+    status: "pending",
     campusRadiusM: 150,
     timezone: "Asia/Riyadh",
     weekDays: [0, 1, 2, 3, 4],

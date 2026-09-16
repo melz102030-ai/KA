@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import { router } from "expo-router";
 import { GRADES_BY_STAGE, STAGE_LABELS, type Gender, type Stage } from "@akbadna/core";
 import { AppText, Button, Card, Field, Icon, Screen } from "@/components";
@@ -38,17 +39,17 @@ export default function AddKid() {
     setBusy(true);
     try {
       if (isDemo) {
-        Alert.alert("وضع تجريبي", `سيُضاف ${name.trim()} عند الدخول بحساب حقيقي.`);
+        showAlert("وضع تجريبي", `سيُضاف ${name.trim()} عند الدخول بحساب حقيقي.`);
       } else {
         await addKid({ name: name.trim(), gender: gender!, grade: grade! });
-        Alert.alert(
+        showAlert(
           "أُضيف الابن",
           "لربطه بفصل، استخدم رمز الدعوة من معلم الفصل. لن يظهر في قائمة الفصل حتى يعتمده المعلم.",
         );
       }
       router.back();
     } catch (e) {
-      Alert.alert("تعذّرت الإضافة", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّرت الإضافة", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(false);
     }

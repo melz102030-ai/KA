@@ -28,6 +28,20 @@ service cloud.firestore {
     function teacherOfClass(schoolId, classId) {
       return signedIn() && request.auth.uid in classData(schoolId, classId).teacherIds;
     }
+    /**
+     * The operator — the one account that may vouch for a school.
+     *
+     * The list lives in config/operators, which no rule below allows anyone
+     * to write. It is created and edited from the Firebase console by whoever
+     * owns the project. An operator list the app could edit would be a list an
+     * attacker could add themselves to.
+     */
+    function isOperator() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/config/operators)
+        && request.auth.uid in get(/databases/$(database)/documents/config/operators).data.uids;
+    }
+
     function schoolData(schoolId) {
       return get(/databases/$(database)/documents/schools/$(schoolId)).data;
     }
@@ -59,6 +73,12 @@ service cloud.firestore {
     // A paired KT37 authenticates with a custom token { role:"device", watchId }.
     function isDevice(watchId) {
       return signedIn() && request.auth.token.role == 'device' && request.auth.token.watchId == watchId;
+    }
+
+    /* ── The operator list — console-only, never written from the app ── */
+    match /config/operators {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     /* ── Profiles ──────────────────────────────────────────── */
@@ -99,8 +119,27 @@ service cloud.firestore {
     /* ── Org ──────────────────────────────────────────────── */
     match /schools/{schoolId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid in request.resource.data.adminUids;
-      allow update: if signedIn() && request.auth.uid in resource.data.adminUids;
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.adminUids
+        // A school begins unverified, whatever its founder writes in the field.
+        && request.resource.data.status == 'pending';
+
+      /**
+       * Two hands on this document.
+       *
+       * The school's own admins edit everything about it except its standing:
+       * name, location, timetable, and the verification file they submit. The
+       * one move they may make on `status` is handing that file in for review.
+       * Granting standing — verified, suspended — belongs to the operator
+       * alone, because a school that can verify itself is not verified at all.
+       */
+      allow update: if
+        (signedIn() && request.auth.uid in resource.data.adminUids
+          && (request.resource.data.status == resource.data.status
+              || (request.resource.data.status == 'submitted'
+                  && (resource.data.status == 'pending'
+                      || resource.data.status == 'rejected'))))
+        || isOperator();
       allow delete: if false;
 
       match /classes/{classId} {

@@ -3,6 +3,9 @@
  * Keeps the client, functions and security rules in agreement.
  */
 export const paths = {
+  /** Written only from the Firebase console — see OperatorsDoc. */
+  operators: () => "config/operators",
+
   users: () => "users",
   user: (uid: string) => `users/${uid}`,
 

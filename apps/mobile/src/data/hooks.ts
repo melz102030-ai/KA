@@ -3,6 +3,7 @@ import { collection, documentId, limit, orderBy, query, where } from "firebase/f
 import {
   AcademicYear,
   Alert as AlertSchema,
+  OperatorsDoc,
   CarpoolRequest,
   CarpoolTrip,
   Contact,
@@ -70,6 +71,27 @@ export function useSchoolJoinCode(schoolId?: string): string | null {
     query(collection(db, paths.joinCodes()), where("schoolId", "==", schoolId), limit(1)),
   );
   return data[0]?.code ?? null;
+}
+
+/**
+ * Whether the signed-in account may vouch for schools.
+ *
+ * The list is a single document that no rule permits the app to write; it is
+ * seeded from the Firebase console by whoever owns the project. Reading it is
+ * open, so the console entry can appear for the operator and for nobody else.
+ */
+export function useIsOperator(): boolean {
+  const { user, isDemo } = useAuth();
+  const { data } = useLiveDoc(isDemo ? null : paths.operators(), OperatorsDoc);
+  return !isDemo && !!user && (data?.uids ?? []).includes(user.uid);
+}
+
+/** Schools waiting on the operator, oldest request first. */
+export function useSchoolsAwaitingReview(enabled: boolean): Feed<School> {
+  const real = useLiveQuery(enabled ? "schools:submitted" : null, School, () =>
+    query(collection(db, paths.schools()), where("status", "==", "submitted"), limit(50)),
+  );
+  return enabled ? real : demoFeed([]);
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import type { CarpoolTrip } from "@akbadna/core";
 import {
   AppText,
@@ -102,7 +103,7 @@ function FindTrips({
     try {
       await requestCarpoolJoin(tripId, sel);
     } catch (e) {
-      Alert.alert("تعذّر", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر", e instanceof Error ? e.message : "خطأ");
     }
   };
 
@@ -206,7 +207,7 @@ function OfferTrip({ schoolId, uid }: { schoolId: string; uid?: string }) {
         vehicle: { make: make.trim() || "سيارة", colour: "-", plate: plate.trim() || "-" },
       });
     } catch (e) {
-      Alert.alert("تعذّر", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(false);
     }

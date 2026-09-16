@@ -181,7 +181,11 @@ describe("memberships", () => {
   it("accepts the founder's staff rows written after the school", async () => {
     const d = asUser("founder");
     await assertSucceeds(
-      setDoc(doc(d, "schools/new1"), { name: "مدرسة جديدة", adminUids: ["founder"] }),
+      setDoc(doc(d, "schools/new1"), {
+        name: "مدرسة جديدة",
+        adminUids: ["founder"],
+        status: "pending",
+      }),
     );
     await assertSucceeds(
       setDoc(doc(d, "memberships/founder_new1_teacher"), {
@@ -226,6 +230,129 @@ describe("memberships", () => {
     );
     await assertFails(
       setDoc(doc(asUser("u5"), "memberships/u5_s1_parent"), { role: "teacher" }, { merge: true }),
+    );
+  });
+});
+
+describe("school verification", () => {
+  /** An operator list, a school, and its founder — the whole cast. */
+  const seed = () =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, "config/operators"), { uids: ["boss"] });
+      await setDoc(doc(d, "schools/s1"), {
+        name: "متوسطة النور",
+        adminUids: ["head"],
+        status: "pending",
+      });
+    });
+
+  it("a new school is born unverified whatever its founder claims", async () => {
+    await assertSucceeds(
+      setDoc(doc(asUser("f1"), "schools/new1"), {
+        name: "مدرسة",
+        adminUids: ["f1"],
+        status: "pending",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(asUser("f2"), "schools/new2"), {
+        name: "مدرسة",
+        adminUids: ["f2"],
+        status: "verified",
+      }),
+    );
+  });
+
+  /**
+   * The hole this closes: the rules used to let any school admin write any
+   * field on their own school, so a founder could stamp "verified" on
+   * themselves and the whole chain of trust rested on nothing.
+   */
+  it("a school cannot verify itself", async () => {
+    await seed();
+    await assertFails(
+      setDoc(doc(asUser("head"), "schools/s1"), { status: "verified" }, { merge: true }),
+    );
+  });
+
+  it("a school cannot lift its own suspension", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "schools/s2"), {
+        name: "م",
+        adminUids: ["head"],
+        status: "suspended",
+      });
+    });
+    await assertFails(
+      setDoc(doc(asUser("head"), "schools/s2"), { status: "submitted" }, { merge: true }),
+    );
+  });
+
+  it("but it may hand its file in for review, and edit everything else", async () => {
+    await seed();
+    await assertSucceeds(
+      setDoc(
+        doc(asUser("head"), "schools/s1"),
+        { licenceNo: "123456", phone: "+966112345678", status: "submitted" },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      setDoc(doc(asUser("head"), "schools/s1"), { campusRadiusM: 200 }, { merge: true }),
+    );
+  });
+
+  it("a stranger touches nothing", async () => {
+    await seed();
+    await assertFails(
+      setDoc(doc(asUser("nobody"), "schools/s1"), { status: "verified" }, { merge: true }),
+    );
+    await assertFails(
+      setDoc(doc(asUser("nobody"), "schools/s1"), { name: "مدرسة أخرى" }, { merge: true }),
+    );
+  });
+
+  it("the operator verifies, rejects and suspends", async () => {
+    await seed();
+    await assertSucceeds(
+      setDoc(doc(asUser("boss"), "schools/s1"), { status: "verified" }, { merge: true }),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(asUser("boss"), "schools/s1"),
+        { status: "rejected", rejectionReason: "رقم الرخصة لا يطابق السجل" },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      setDoc(doc(asUser("boss"), "schools/s1"), { status: "suspended" }, { merge: true }),
+    );
+  });
+
+  /**
+   * The operator list is the root of the whole chain, so the app may read it
+   * and nothing may write it — it is seeded from the Firebase console by the
+   * project's owner. A list the app could edit is a list an attacker could
+   * join.
+   */
+  it("nobody writes themselves onto the operator list", async () => {
+    await seed();
+    await assertFails(
+      setDoc(doc(asUser("boss"), "config/operators"), { uids: ["boss", "friend"] }),
+    );
+    await assertFails(setDoc(doc(asUser("head"), "config/operators"), { uids: ["head"] }));
+    await assertSucceeds(getDoc(doc(asUser("head"), "config/operators")));
+  });
+
+  it("an empty operator list makes nobody an operator", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, "config/operators"), { uids: [] });
+      await setDoc(doc(d, "schools/s3"), { name: "م", adminUids: ["head"], status: "submitted" });
+    });
+    await assertFails(
+      setDoc(doc(asUser("boss"), "schools/s3"), { status: "verified" }, { merge: true }),
     );
   });
 });

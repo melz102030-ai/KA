@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import type { WalletTransaction } from "@akbadna/core";
 import {
   AppText,
@@ -71,9 +72,9 @@ export default function WalletScreen() {
     setBusy(true);
     try {
       await topUpWallet(kid.id, 5000);
-      Alert.alert("تم", "أُضيف 50.00 ر.س للرصيد.");
+      showAlert("تم", "أُضيف 50.00 ر.س للرصيد.");
     } catch (e) {
-      Alert.alert("تعذّر", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(false);
     }

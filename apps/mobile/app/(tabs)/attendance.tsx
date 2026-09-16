@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import {
   LATE_COUNTDOWN_SEC,
   REWARD_GLYPHS,
@@ -227,7 +228,7 @@ export default function Attendance() {
     }
     setMarks(next);
     if (skipped) {
-      Alert.alert(
+      showAlert(
         "تم اعتماد الحالة المباشرة",
         `${skipped} طالب بلا إشارة من الساعة — لم يُعلَّم أحد منهم تلقائيًا، حدّدهم يدويًا.`,
       );
@@ -274,7 +275,7 @@ export default function Attendance() {
           marks: Object.entries(marks).map(([kidId, status]) => ({ kidId, status })),
         });
       }
-      Alert.alert(
+      showAlert(
         "تم تسجيل الحضور",
         `حاضر ${counts.present} · متأخر ${counts.late} · غائب ${counts.absent}${
           isDemo || !schoolId ? "\n(وضع تجريبي — لم يُرسل للخادم)" : ""
@@ -282,7 +283,7 @@ export default function Attendance() {
       );
       setMarks({});
     } catch (e) {
-      Alert.alert("تعذّر الحفظ", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر الحفظ", e instanceof Error ? e.message : "خطأ");
     } finally {
       setSaving(false);
     }

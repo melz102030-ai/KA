@@ -28,6 +28,7 @@ export const NOUNS = {
   },
   period: { one: "حصة واحدة", two: "حصتان", few: "حصص", many: "حصةً" },
   student: { one: "طالب واحد", two: "طالبان", few: "طلاب", many: "طالبًا" },
+  school: { one: "مدرسة واحدة", two: "مدرستان", few: "مدارس", many: "مدرسةً" },
 } satisfies Record<string, ArabicNoun>;
 
 /**

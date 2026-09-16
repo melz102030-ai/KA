@@ -47,3 +47,16 @@ export const Membership = Audit.extend({
   acceptedAt: EpochMillis.optional(),
 });
 export type Membership = z.infer<typeof Membership>;
+
+/**
+ * config/operators — the accounts that may verify a school.
+ *
+ * Deliberately a document nobody can write from the app: the security rules
+ * refuse every write to it, so it is created and edited only from the Firebase
+ * console by whoever owns the project. An operator list the app could edit
+ * would be an operator list an attacker could join.
+ */
+export const OperatorsDoc = z.object({
+  uids: z.array(z.string()).default([]),
+});
+export type OperatorsDoc = z.infer<typeof OperatorsDoc>;

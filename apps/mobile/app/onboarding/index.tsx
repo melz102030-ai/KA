@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import { router } from "expo-router";
 import { AppText, Button, Card, Field, Icon, Screen, SectionHeader } from "@/components";
 import { useAuth } from "@/lib/auth";
@@ -17,7 +18,7 @@ export default function Onboarding() {
     try {
       await fn();
     } catch (e) {
-      Alert.alert("تعذّر الإكمال", e instanceof Error ? e.message : "حدث خطأ");
+      showAlert("تعذّر الإكمال", e instanceof Error ? e.message : "حدث خطأ");
     } finally {
       setBusy(false);
     }
@@ -213,7 +214,7 @@ function TeacherSetup({
                   className: cls.trim(),
                   grade: grade.trim(),
                 });
-                Alert.alert(
+                showAlert(
                   "تم إنشاء المدرسة",
                   `رمز انضمام أولياء الأمور:\n\n${res.joinCode}\n\nشاركه مع أولياء أمور الفصل.`,
                   [{ text: "متابعة", onPress: done }],

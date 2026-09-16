@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Audit, ClockTime, GeoPoint, WeekDay } from "../common.js";
+import { Audit, ClockTime, EpochMillis, GeoPoint, NationalId, WeekDay } from "../common.js";
 import { GradeNumber, SchoolSegment } from "../education.js";
 import { SchoolStatus } from "../trust.js";
 
@@ -16,12 +16,25 @@ export const School = Audit.extend({
   segment: SchoolSegment.optional(),
   /**
    * Nobody outside the app can confirm a school is real, so it starts
-   * unverified and has to be vouched for. It may still run day to day; what it
-   * may not do is take on new staff or families. See schoolCapabilities.
+   * unverified and does nothing at all until the operator vouches for it.
+   * See schoolCapabilities for what each status permits.
    */
   status: SchoolStatus.default("pending"),
-  verifiedAt: z.number().int().nonnegative().optional(),
+  verifiedAt: EpochMillis.optional(),
   verifiedBy: z.string().optional(),
+  /** Why the operator sent the request back, shown to the school verbatim. */
+  rejectionReason: z.string().optional(),
+
+  /* The verification file. Checkable by a person in a few minutes, and by no
+     Ministry system at all. */
+  /** Licence / school number as printed on the school's papers. Unique. */
+  licenceNo: z.string().optional(),
+  headTeacherName: z.string().optional(),
+  headTeacherNationalId: NationalId.optional(),
+  /** The school's published number — landline (+9661…) or mobile (+9665…). */
+  phone: z.string().optional(),
+  submittedAt: EpochMillis.optional(),
+  submittedBy: z.string().optional(),
   location: GeoPoint.optional(),
   /** Default campus fence; individual gates live in `geofences`. */
   campusRadiusM: z.number().positive().default(150),

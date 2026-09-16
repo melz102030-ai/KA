@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { showAlert } from "@/lib/dialog";
 import { router } from "expo-router";
 import {
   CLOSE_YEAR_MESSAGES,
@@ -93,7 +94,7 @@ export default function YearEnd() {
       `يُفتح عام ${yearLabel(startYear + 1)} ويُحفظ سجل العام المنتهي كما هو.`,
     ].filter(Boolean);
 
-    Alert.alert(`إنهاء عام ${yearLabel(startYear)}`, lines.join("\n"), [
+    showAlert(`إنهاء عام ${yearLabel(startYear)}`, lines.join("\n"), [
       { text: "رجوع", style: "cancel" },
       { text: "إنهاء العام", style: "destructive", onPress: run },
     ]);
@@ -103,7 +104,7 @@ export default function YearEnd() {
     setBusy(true);
     try {
       if (isDemo) {
-        Alert.alert("وضع تجريبي", "سيُنفَّذ الترفيع عند الدخول بحساب مدرسة حقيقي.");
+        showAlert("وضع تجريبي", "سيُنفَّذ الترفيع عند الدخول بحساب مدرسة حقيقي.");
       } else if (schoolId) {
         const res = await closeYear({
           schoolId,
@@ -114,7 +115,7 @@ export default function YearEnd() {
           endsAt: year?.endsAt,
           force: true,
         });
-        Alert.alert(
+        showAlert(
           "انتهى العام",
           `رُفِّع ${arabicCount(res.promoted, NOUNS.student)}، وتخرّج ${arabicCount(
             res.graduated,
@@ -124,7 +125,7 @@ export default function YearEnd() {
       }
       router.back();
     } catch (e) {
-      Alert.alert("تعذّر إنهاء العام", e instanceof Error ? e.message : "خطأ");
+      showAlert("تعذّر إنهاء العام", e instanceof Error ? e.message : "خطأ");
     } finally {
       setBusy(false);
     }
