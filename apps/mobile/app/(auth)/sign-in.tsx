@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image, Platform, useWindowDimensions, View } from "react-native";
+import { Image, Platform, Text, useWindowDimensions, View } from "react-native";
 import { Redirect } from "expo-router";
 import { NATIONAL_ID_MESSAGES, nationalIdProblem, type Role } from "@akbadna/core";
 import { AppText, Button, Card, Field, Icon, type IconName, Screen } from "@/components";
@@ -112,20 +112,24 @@ export default function SignIn() {
       >
         <Image source={MARK} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
       </View>
-      <AppText
-        variant="title"
-        style={[
-          { marginTop: space.md, color: color.moeGreen },
-          desktop && { fontSize: font.size.xxl, lineHeight: 40 },
-        ]}
-      >
-        أكبادنا
-      </AppText>
+      {/* The verse the app is named after. «أكبادنا» is the name itself, so it
+          carries the state green while the rest of the line stays quiet. A
+          nested Text inherits the size and only overrides the colour. */}
       <AppText
         variant="label"
-        style={[{ color: color.textMuted }, desktop && { fontSize: font.size.md, lineHeight: 24 }]}
+        style={[
+          {
+            marginTop: space.md,
+            color: color.textMuted,
+            textAlign: desktop ? "left" : "center",
+            lineHeight: 26,
+          },
+          desktop && { fontSize: font.size.md, lineHeight: 28 },
+        ]}
       >
-        أولادنا تمشي على الأرض
+        وإنّما أولادُنا بيننا{" "}
+        <Text style={{ color: color.moeGreen, fontFamily: font.family.bold }}>أكبادُنا</Text> تمشي
+        على الأرض
       </AppText>
       {/* A thin rule in the state green, the way official services mark a header. */}
       <View
