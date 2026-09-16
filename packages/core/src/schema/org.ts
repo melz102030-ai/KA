@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Audit, ClockTime, GeoPoint, WeekDay } from "../common.js";
 import { GradeNumber, SchoolSegment } from "../education.js";
+import { SchoolStatus } from "../trust.js";
 
 /** schools/{schoolId} */
 export const School = Audit.extend({
@@ -13,6 +14,14 @@ export const School = Audit.extend({
    * accordingly, and this is what a child's enrolment is checked against.
    */
   segment: SchoolSegment.optional(),
+  /**
+   * Nobody outside the app can confirm a school is real, so it starts
+   * unverified and has to be vouched for. It may still run day to day; what it
+   * may not do is take on new staff or families. See schoolCapabilities.
+   */
+  status: SchoolStatus.default("pending"),
+  verifiedAt: z.number().int().nonnegative().optional(),
+  verifiedBy: z.string().optional(),
   location: GeoPoint.optional(),
   /** Default campus fence; individual gates live in `geofences`. */
   campusRadiusM: z.number().positive().default(150),

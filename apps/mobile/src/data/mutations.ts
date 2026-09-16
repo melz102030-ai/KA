@@ -3,8 +3,9 @@
  * plan). Set EXPO_PUBLIC_USE_FUNCTIONS=1 to route the same calls through the
  * deployed Cloud Functions instead — no screen changes needed.
  */
-import { collection, doc, setDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, setDoc } from "firebase/firestore";
 import {
+  canInvite,
   cueForAttendance,
   paths,
   rewardCue,
@@ -13,6 +14,7 @@ import {
   type CallableRequest,
   type CallableResponse,
   type RewardGlyph,
+  type Role,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
 import { call } from "@/lib/functions";
@@ -227,4 +229,98 @@ export async function sendReward(input: {
   } catch {
     return "failed";
   }
+}
+
+/* ── The chain of trust ──────────────────────────────────────────────────── */
+
+const randomCode = () => {
+  // No I, O, 0 or 1 — a code gets read aloud and typed by hand.
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(
+    { length: 6 },
+    () => alphabet[Math.floor(Math.random() * alphabet.length)],
+  ).join("");
+};
+
+/**
+ * Mints an invitation. The code carries the standing it grants, and
+ * {@link redemptionProblem} refuses to redeem it as anything else.
+ *
+ * A teacher may invite families and nothing more — letting one mint another
+ * would close a loop and take the school out of control of its own staff.
+ */
+export async function createInviteCode(input: {
+  schoolId: string;
+  classId?: string;
+  inviterRole: Role;
+  grants: Role;
+  maxUses?: number;
+  expiresInDays?: number;
+}): Promise<string> {
+  if (!canInvite(input.inviterRole, input.grants)) {
+    throw new Error("ليست لديك صلاحية إصدار هذه الدعوة");
+  }
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+
+  const code = randomCode();
+  await setDoc(doc(db, paths.joinCode(code)), {
+    code,
+    schoolId: input.schoolId,
+    ...(input.classId ? { classId: input.classId } : {}),
+    role: input.grants,
+    createdByUid: u,
+    uses: 0,
+    ...(input.maxUses ? { maxUses: input.maxUses } : {}),
+    ...(input.expiresInDays ? { expiresAt: Date.now() + input.expiresInDays * 86_400_000 } : {}),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  return code;
+}
+
+/**
+ * The teacher's decision on a child asking to join their class.
+ *
+ * Admitting is what actually puts the child on the roster — the join code only
+ * ever created a request. Refusing leaves the record intact and merely closed,
+ * so a family can see what happened instead of the child silently vanishing.
+ */
+export async function decideEnrolment(input: {
+  kidId: string;
+  schoolId: string;
+  classId: string;
+  admit: boolean;
+}): Promise<void> {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+
+  await setDoc(
+    doc(db, paths.kid(input.kidId)),
+    {
+      enrolmentStatus: input.admit ? "active" : "rejected",
+      enrolmentDecidedBy: u,
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+
+  if (input.admit) {
+    await setDoc(
+      doc(db, paths.class(input.schoolId, input.classId)),
+      { studentIds: arrayUnion(input.kidId), updatedAt: Date.now() },
+      { merge: true },
+    );
+  }
+}
+
+/** Marks a school as vouched for. Only the operator's own account may do this. */
+export async function verifySchool(schoolId: string): Promise<void> {
+  const u = auth.currentUser?.uid;
+  if (!u) throw new Error("sign-in required");
+  await setDoc(
+    doc(db, paths.school(schoolId)),
+    { status: "verified", verifiedAt: Date.now(), verifiedBy: u, updatedAt: Date.now() },
+    { merge: true },
+  );
 }

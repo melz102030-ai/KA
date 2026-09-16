@@ -16,7 +16,12 @@ import { AppText, Button, Card, Dot, EmptyState, Icon, Screen } from "@/componen
 import { EditableAvatar } from "@/components/AvatarPicker";
 import { useAuth } from "@/lib/auth";
 import { useClass, useMemberships, useRoster, useSchool } from "@/data/hooks";
-import { queueAttendanceCue, sendReward, submitAttendance } from "@/data/mutations";
+import {
+  decideEnrolment,
+  queueAttendanceCue,
+  sendReward,
+  submitAttendance,
+} from "@/data/mutations";
 import { alpha, color, font, radius, space } from "@/theme";
 
 const OPTIONS: { s: AttendanceStatus; label: string; tone: string }[] = [
@@ -156,6 +161,18 @@ export default function Attendance() {
     return c;
   }, [roster, live]);
 
+  /**
+   * Children whose family redeemed the class code but whom no teacher has
+   * admitted yet. They are deliberately absent from the register below: a
+   * family cannot put its own child on a roster.
+   */
+  const waiting = isDemo ? [] : rosterKids.filter((k: Kid) => k.enrolmentStatus === "pending");
+
+  const decide = (kidId: string, admit: boolean) => {
+    if (!schoolId || !classId) return;
+    void decideEnrolment({ kidId, schoolId, classId, admit });
+  };
+
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>({});
   const [cueState, setCueState] = useState<Record<string, string>>({});
   const [awarded, setAwarded] = useState<Record<string, RewardGlyph>>({});
@@ -289,6 +306,39 @@ export default function Attendance() {
           title="لا يوجد فصل مرتبط"
           subtitle="أنشئ مدرسة وفصلًا من إعداد المعلم لبدء تسجيل الحضور."
         />
+      )}
+
+      {waiting.length > 0 && (
+        <Card padding={space.md} style={{ marginBottom: space.md, borderColor: color.warning }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+            <Icon name="person-add-outline" size={17} color={color.warning} />
+            <AppText variant="subtitle" style={{ flex: 1 }}>
+              طلبات انضمام ({waiting.length})
+            </AppText>
+          </View>
+          <AppText variant="caption" style={{ marginTop: 3 }}>
+            أسرٌ استخدمت رمز فصلك. لا يدخل الطالب القائمة قبل اعتمادك.
+          </AppText>
+          <View style={{ gap: space.sm, marginTop: space.md }}>
+            {waiting.map((k: Kid) => (
+              <View
+                key={k.id}
+                style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}
+              >
+                <AppText variant="subtitle" style={{ flex: 1 }}>
+                  {k.name}
+                </AppText>
+                <Button label="اعتماد" size="sm" onPress={() => decide(k.id, true)} />
+                <Button
+                  label="رفض"
+                  size="sm"
+                  variant="danger"
+                  onPress={() => decide(k.id, false)}
+                />
+              </View>
+            ))}
+          </View>
+        </Card>
       )}
 
       {roster.length > 0 && (

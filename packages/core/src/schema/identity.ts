@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Audit, EpochMillis, NationalId, SaudiPhone } from "../common.js";
 import { Locale, Role } from "../enums.js";
+import { MembershipStatus } from "../trust.js";
 
 /**
  * users/{uid} — one per Firebase Auth account.
@@ -35,6 +36,8 @@ export const Membership = Audit.extend({
   kidIds: z.array(z.string()).default([]),
   classIds: z.array(z.string()).default([]),
   invitedBy: z.string().optional(),
+  /** Standing with the school. Only "active" grants anything. */
+  status: MembershipStatus.default("active"),
   acceptedAt: EpochMillis.optional(),
 });
 export type Membership = z.infer<typeof Membership>;

@@ -29,6 +29,12 @@ type Tool = { icon: IconName; label: string; sub: string; href?: Href };
 
 const TOOLS: Tool[] = [
   {
+    icon: "business-outline",
+    label: "إدارة المدرسة",
+    sub: "هيئة التدريس، الطلاب، ودعوات الانضمام",
+    href: "/tools/school",
+  },
+  {
     icon: "notifications-outline",
     label: "التنبيهات",
     sub: "استغاثات، بطارية، سياج جغرافي",

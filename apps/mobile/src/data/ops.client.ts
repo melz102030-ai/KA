@@ -23,6 +23,10 @@ import {
   generateAkbadnaId,
   generateJoinCode,
   paths,
+  REDEMPTION_MESSAGES,
+  redemptionProblem,
+  type Role,
+  type SchoolStatus,
 } from "@akbadna/core";
 import { auth, db } from "@/lib/firebase";
 
@@ -168,10 +172,33 @@ export async function joinByCode(
   const code = input.code.toUpperCase();
   const codeSnap = await getDoc(doc(db, paths.joinCode(code)));
   if (!codeSnap.exists()) throw new Error("رمز غير صحيح");
-  const c = codeSnap.data() as { schoolId: string; classId?: string; expiresAt?: number };
-  if (c.expiresAt && Date.now() > c.expiresAt) throw new Error("انتهت صلاحية الرمز");
+  const c = codeSnap.data() as {
+    schoolId: string;
+    classId?: string;
+    role?: Role;
+    expiresAt?: number;
+    uses?: number;
+    maxUses?: number;
+  };
 
-  const role = input.asRole === "teacher" ? "teacher" : "parent";
+  // What the person is claiming, checked against what the code actually grants.
+  // Taking the claim on trust is what let a parent code buy teacher access.
+  const asRole: Role = input.asRole === "teacher" ? "teacher" : "parent";
+  const schoolSnap = await getDoc(doc(db, paths.school(c.schoolId)));
+  const schoolStatus = (schoolSnap.data()?.status ?? "pending") as SchoolStatus;
+
+  const problem = redemptionProblem({
+    codeRole: (c.role ?? "parent") as Role,
+    asRole,
+    expiresAt: c.expiresAt,
+    uses: c.uses ?? 0,
+    maxUses: c.maxUses,
+    schoolStatus,
+    now: Date.now(),
+  });
+  if (problem) throw new Error(REDEMPTION_MESSAGES[problem]);
+
+  const role = asRole;
   const id = membershipId(u, c.schoolId, role);
   const batch = writeBatch(db);
   batch.set(doc(db, paths.membership(id)), {
@@ -185,16 +212,20 @@ export async function joinByCode(
     createdAt: ts(),
     updatedAt: ts(),
   });
+  // The child is attached to the class as a REQUEST, not a fact: the roster is
+  // left alone until a teacher admits them. Writing studentIds here would let a
+  // family put their own child in any class whose code they happened to have.
   if (c.classId && input.kidIds.length) {
-    batch.set(
-      doc(db, paths.class(c.schoolId, c.classId)),
-      { studentIds: arrayUnion(...input.kidIds), updatedAt: ts() },
-      { merge: true },
-    );
     for (const kidId of input.kidIds) {
       batch.set(
         doc(db, paths.kid(kidId)),
-        { schoolId: c.schoolId, classId: c.classId, updatedAt: ts() },
+        {
+          schoolId: c.schoolId,
+          classId: c.classId,
+          enrolmentStatus: "pending",
+          enrolmentRequestedAt: ts(),
+          updatedAt: ts(),
+        },
         { merge: true },
       );
     }

@@ -5,6 +5,7 @@ export * from "./education.js";
 export * from "./identity.js";
 export * from "./presence.js";
 export * from "./sun.js";
+export * from "./trust.js";
 export * from "./attendanceCues.js";
 export * from "./callables.js";
 

@@ -12,6 +12,7 @@ export default function ToolsLayout() {
         contentStyle: { backgroundColor: color.bg },
       }}
     >
+      <Stack.Screen name="school" options={{ title: "إدارة المدرسة" }} />
       <Stack.Screen name="schedule" options={{ title: "جدول الحصص" }} />
       <Stack.Screen name="health" options={{ title: "الصحة والحيويات" }} />
       <Stack.Screen name="wallet" options={{ title: "المحفظة المدرسية" }} />

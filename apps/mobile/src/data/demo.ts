@@ -8,6 +8,7 @@ export const DEMO_KIDS: Kid[] = [
     name: "أحمد محمد الغامدي",
     gender: "boy",
     grade: 7,
+    enrolmentStatus: "active",
     guardianUids: ["demo"],
     akbadnaId: "AKB-7X3K-9P2Q",
     live: {
@@ -27,6 +28,7 @@ export const DEMO_KIDS: Kid[] = [
     name: "منى محمد الغامدي",
     gender: "girl",
     grade: 2,
+    enrolmentStatus: "active",
     guardianUids: ["demo"],
     akbadnaId: "AKB-4M8T-1L6R",
     live: {
