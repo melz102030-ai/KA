@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { AkbadnaId, Imei, SaudiPhone } from "./common.js";
+import { Gender, GradeNumber } from "./education.js";
 import { AttendanceStatus, Role, TripDirection } from "./enums.js";
 
 export const callables = {
@@ -73,6 +74,8 @@ export const callables = {
     name: "addKid",
     request: z.object({
       name: z.string().min(1),
+      gender: Gender.optional(),
+      grade: GradeNumber.optional(),
       gradeLabel: z.string().optional(),
       classId: z.string().optional(),
       schoolId: z.string().optional(),

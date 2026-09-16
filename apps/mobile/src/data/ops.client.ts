@@ -78,9 +78,12 @@ export async function addKid(
   batch.set(ref, {
     id: ref.id,
     name: input.name,
+    ...(input.gender ? { gender: input.gender } : {}),
+    ...(input.grade ? { grade: input.grade } : {}),
     ...(input.gradeLabel ? { gradeLabel: input.gradeLabel } : {}),
     ...(input.schoolId ? { schoolId: input.schoolId } : {}),
-    ...(input.classId ? { classId: input.classId } : {}),
+    ...(input.classId ? { classId: input.classId, enrolmentRequestedAt: ts() } : {}),
+    enrolmentStatus: "pending",
     guardianUids: [u],
     akbadnaId,
     live: { presence: "unknown", watchOnline: false },
@@ -88,13 +91,8 @@ export async function addKid(
     createdAt: ts(),
     updatedAt: ts(),
   });
-  if (input.schoolId && input.classId) {
-    batch.set(
-      doc(db, paths.class(input.schoolId, input.classId)),
-      { studentIds: arrayUnion(ref.id), updatedAt: ts() },
-      { merge: true },
-    );
-  }
+  // No roster write: naming a class is a request, and the teacher decides.
+  // Writing studentIds here would let a parent seat their child in any class.
   await batch.commit();
   return { kidId: ref.id, akbadnaId };
 }

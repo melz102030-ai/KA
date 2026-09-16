@@ -235,7 +235,19 @@ export default function Home() {
         )}
       </Card>
 
-      <SectionHeader>الأبناء</SectionHeader>
+      <SectionHeader
+        action={
+          <Button
+            label="إضافة ابن"
+            size="sm"
+            variant="ghost"
+            icon="person-add-outline"
+            onPress={() => router.push("/tools/add-kid")}
+          />
+        }
+      >
+        الأبناء
+      </SectionHeader>
 
       {sides.length > 1 && (
         <View style={{ flexDirection: "row", gap: space.xs, marginBottom: space.sm }}>
