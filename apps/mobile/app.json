@@ -7,10 +7,10 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#FCF7F1",
+    "backgroundColor": "#FFFBF0",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#FCF7F1",
+      "backgroundColor": "#FFFBF0",
       "resizeMode": "contain"
     },
     "ios": {
@@ -20,7 +20,7 @@
     "android": {
       "package": "sa.akbadna.app",
       "adaptiveIcon": {
-        "backgroundColor": "#FCF7F1",
+        "backgroundColor": "#FFFBF0",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
@@ -37,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FCF7F1",
+          "backgroundColor": "#FFFBF0",
           "resizeMode": "contain"
         }
       ]
